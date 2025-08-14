@@ -210,9 +210,6 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date()
-                          }
                           initialFocus
                         />
                       </PopoverContent>
@@ -254,7 +251,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) =>
-                            date < (form.getValues("startDate") || new Date())
+                            form.getValues("startDate") && date < form.getValues("startDate")
                           }
                           initialFocus
                         />

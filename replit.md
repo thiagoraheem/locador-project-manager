@@ -7,6 +7,7 @@ ProjectFlow is a comprehensive project management web application built with mod
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Date restrictions: Allow retroactive project creation with past dates for flexible project timeline management.
 
 ## System Architecture
 
