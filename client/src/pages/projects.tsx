@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import CreateProjectModal from "@/components/project/create-project-modal";
-import { FolderKanban, Calendar, Users, MoreHorizontal } from "lucide-react";
+import { CreateTaskModal } from "@/components/task/create-task-modal";
+import { FolderKanban, Calendar, Users, MoreHorizontal, Plus } from "lucide-react";
 import type { Project } from "@shared/schema";
 
 export default function Projects() {
@@ -121,13 +122,25 @@ export default function Projects() {
                       <Users className="w-3 h-3 mr-1" />
                       <span>Team</span>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      data-testid={`view-project-${project.id}`}
-                    >
-                      View Details
-                    </Button>
+                    <div className="flex gap-2">
+                      <CreateTaskModal projectId={project.id}>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          data-testid={`create-task-${project.id}`}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Tarefa
+                        </Button>
+                      </CreateTaskModal>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        data-testid={`view-project-${project.id}`}
+                      >
+                        Detalhes
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

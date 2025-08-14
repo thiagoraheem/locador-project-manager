@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import Tickets from "@/pages/tickets";
+import Tasks from "@/pages/tasks";
 import GanttCharts from "@/pages/gantt";
 import Sidebar from "@/components/layout/sidebar";
 
@@ -19,6 +20,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/projects" component={Projects} />
           <Route path="/tickets" component={Tickets} />
+          <Route path="/tasks" component={Tasks} />
           <Route path="/gantt" component={GanttCharts} />
           <Route component={NotFound} />
         </Switch>

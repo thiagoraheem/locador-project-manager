@@ -4,6 +4,7 @@ import {
   Home, 
   FolderKanban, 
   Ticket, 
+  CheckSquare,
   Calendar, 
   BarChart3,
   User
@@ -13,8 +14,8 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Tickets", href: "/tickets", icon: Ticket },
+  { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Gantt Charts", href: "/gantt", icon: BarChart3 },
-  { name: "Schedule", href: "/schedule", icon: Calendar },
 ];
 
 export default function Sidebar() {
