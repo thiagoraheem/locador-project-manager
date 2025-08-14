@@ -87,7 +87,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
             <span>ID: #{ticket.id.slice(0, 8)}</span>
             {ticket.projectId && <span>Project: {ticket.projectId.slice(0, 8)}</span>}
           </div>
-          <span>{formatTimeAgo(ticket.createdAt)}</span>
+          <span>{formatTimeAgo(ticket.createdAt.toString())}</span>
         </div>
       </CardContent>
     </Card>

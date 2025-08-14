@@ -143,7 +143,8 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                     <Textarea 
                       placeholder="Describe your project"
                       rows={3}
-                      {...field} 
+                      {...field}
+                      value={field.value || ""}
                       data-testid="project-description-input"
                     />
                   </FormControl>

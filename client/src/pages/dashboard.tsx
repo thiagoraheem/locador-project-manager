@@ -214,7 +214,7 @@ export default function Dashboard() {
                             {project.status.replace('_', ' ')}
                           </span>
                           <p className="text-sm text-gray-500 mt-1">
-                            Due {formatDate(project.endDate)}
+                            Due {formatDate(project.endDate.toString())}
                           </p>
                         </div>
                       </div>
@@ -268,7 +268,7 @@ export default function Dashboard() {
                         <p className="text-xs text-gray-500 mb-2">{ticket.description}</p>
                         <div className="flex items-center justify-between text-xs text-gray-400">
                           <span>#{ticket.id.slice(0, 8)}</span>
-                          <span>{formatTimeAgo(ticket.createdAt)}</span>
+                          <span>{formatTimeAgo(ticket.createdAt.toString())}</span>
                         </div>
                       </div>
                     ))}

@@ -58,11 +58,11 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         <div className="space-y-2 text-xs text-gray-500">
           <div className="flex items-center">
             <Calendar className="w-3 h-3 mr-2" />
-            <span>Start: {formatDate(project.startDate)}</span>
+            <span>Start: {formatDate(project.startDate.toString())}</span>
           </div>
           <div className="flex items-center">
             <Calendar className="w-3 h-3 mr-2" />
-            <span>End: {formatDate(project.endDate)}</span>
+            <span>End: {formatDate(project.endDate.toString())}</span>
           </div>
         </div>
 
