@@ -67,7 +67,9 @@ export default function GanttChart({ projects, tasks }: GanttChartProps) {
         <div className="space-y-3">
           {projects.map((project) => {
             const projectTasks = tasks.filter(task => task.projectId === project.id);
-            const position = calculateBarPosition(project.startDate.toString(), project.endDate.toString());
+            const position = project.startDate && project.endDate 
+              ? calculateBarPosition(project.startDate.toString(), project.endDate.toString())
+              : { left: 0, width: 0 };
             
             return (
               <div key={project.id} className="space-y-2">

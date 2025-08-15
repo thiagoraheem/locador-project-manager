@@ -97,7 +97,7 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" data-testid="create-ticket-modal">
+      <DialogContent className="w-[95vw] max-w-md mx-4 md:mx-auto" data-testid="create-ticket-modal">
         <DialogHeader>
           <DialogTitle>Criar Novo Chamado</DialogTitle>
         </DialogHeader>
@@ -141,7 +141,7 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="priority"
@@ -172,14 +172,17 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Projeto (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "none" ? undefined : value)} 
+                      value={field.value || "none"}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="ticket-project-select">
                           <SelectValue placeholder="Selecione o projeto" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhum projeto</SelectItem>
+                        <SelectItem value="none">Nenhum projeto</SelectItem>
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
@@ -193,7 +196,7 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
               />
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex flex-col-reverse md:flex-row justify-end space-y-2 space-y-reverse md:space-y-0 md:space-x-2 pt-4">
               <Button 
                 type="button" 
                 variant="outline" 

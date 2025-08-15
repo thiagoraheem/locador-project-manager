@@ -1,10 +1,13 @@
 import { 
-  users, projects, tickets, tasks, milestones,
+  users, projects, tickets, tasks, milestones, comments, taskDependencies, notifications,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Ticket, type InsertTicket,
   type Task, type InsertTask,
-  type Milestone, type InsertMilestone
+  type Milestone, type InsertMilestone,
+  type Comment, type InsertComment,
+  type TaskDependency, type InsertTaskDependency,
+  type Notification, type InsertNotification
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
@@ -13,7 +16,10 @@ export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
+  deleteUser(id: string): Promise<void>;
   getUsers(): Promise<User[]>;
   
   // Projects
@@ -40,6 +46,26 @@ export interface IStorage {
   // Milestones
   getMilestones(projectId?: string): Promise<Milestone[]>;
   createMilestone(milestone: InsertMilestone): Promise<Milestone>;
+  
+  // Comments
+  getComments(ticketId: string): Promise<Comment[]>;
+  createComment(comment: InsertComment): Promise<Comment>;
+  updateComment(id: string, updates: Partial<InsertComment>): Promise<Comment>;
+  deleteComment(id: string): Promise<void>;
+  
+  // Task Dependencies
+  getTaskDependencies(taskId: string): Promise<TaskDependency[]>;
+  createTaskDependency(dependency: InsertTaskDependency): Promise<TaskDependency>;
+  deleteTaskDependency(id: string): Promise<void>;
+  checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean>;
+  
+  // Notifications
+  getNotifications(userId: string): Promise<Notification[]>;
+  getUnreadNotifications(userId: string): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  deleteNotification(id: string): Promise<void>;
   
   // Dashboard Stats
   getDashboardStats(): Promise<{
@@ -70,6 +96,24 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
   async getUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(users.name);
   }
@@ -85,9 +129,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProject(project: InsertProject): Promise<Project> {
+    // Generate a simple UUID for SQLite compatibility
+    const id = 'proj_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    const projectWithId = {
+      ...project,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
     const [newProject] = await db
       .insert(projects)
-      .values(project)
+      .values(projectWithId)
       .returning();
     return newProject;
   }
@@ -150,7 +203,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTask(id: string): Promise<Task | undefined> {
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    const [task] = await db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        description: tasks.description,
+        status: tasks.status,
+        priority: tasks.priority,
+        startDate: tasks.startDate,
+        endDate: tasks.endDate,
+        projectId: tasks.projectId,
+        assigneeId: tasks.assigneeId,
+        createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt,
+        project: {
+          id: projects.id,
+          name: projects.name,
+        },
+        assignee: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        },
+      })
+      .from(tasks)
+      .leftJoin(projects, eq(tasks.projectId, projects.id))
+      .leftJoin(users, eq(tasks.assigneeId, users.id))
+      .where(eq(tasks.id, id));
     return task || undefined;
   }
 
@@ -219,6 +298,160 @@ export class DatabaseStorage implements IStorage {
       completedTasks: completedTasksResult.count,
       teamMembers: teamMembersResult.count,
     };
+  }
+
+  // Comments methods
+  async getComments(ticketId: string): Promise<Comment[]> {
+    return await db
+      .select({
+        id: comments.id,
+        content: comments.content,
+        ticketId: comments.ticketId,
+        authorId: comments.authorId,
+        createdAt: comments.createdAt,
+        updatedAt: comments.updatedAt,
+        author: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        },
+      })
+      .from(comments)
+      .leftJoin(users, eq(comments.authorId, users.id))
+      .where(eq(comments.ticketId, ticketId))
+      .orderBy(desc(comments.createdAt));
+  }
+
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [newComment] = await db
+      .insert(comments)
+      .values(comment)
+      .returning();
+    return newComment;
+  }
+
+  async updateComment(id: string, updates: Partial<InsertComment>): Promise<Comment> {
+    const [updatedComment] = await db
+      .update(comments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(comments.id, id))
+      .returning();
+    return updatedComment;
+  }
+
+  async deleteComment(id: string): Promise<void> {
+    await db.delete(comments).where(eq(comments.id, id));
+  }
+
+  // Task Dependencies
+  async getTaskDependencies(taskId: string): Promise<TaskDependency[]> {
+    return await db
+      .select()
+      .from(taskDependencies)
+      .where(eq(taskDependencies.taskId, taskId))
+      .orderBy(taskDependencies.createdAt);
+  }
+
+  async createTaskDependency(dependency: InsertTaskDependency): Promise<TaskDependency> {
+    const id = 'dep_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    const dependencyWithId = {
+      ...dependency,
+      id,
+      createdAt: new Date(),
+    };
+    
+    const [created] = await db
+      .insert(taskDependencies)
+      .values(dependencyWithId)
+      .returning();
+    return created;
+  }
+
+  async deleteTaskDependency(id: string): Promise<void> {
+    await db.delete(taskDependencies).where(eq(taskDependencies.id, id));
+  }
+
+  async checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean> {
+    // If trying to make a task depend on itself
+    if (taskId === dependsOnTaskId) {
+      return true;
+    }
+
+    // Check if dependsOnTaskId already depends on taskId (directly or indirectly)
+    const visited = new Set<string>();
+    const stack = [dependsOnTaskId];
+
+    while (stack.length > 0) {
+      const currentTaskId = stack.pop()!;
+      
+      if (visited.has(currentTaskId)) {
+        continue;
+      }
+      
+      visited.add(currentTaskId);
+      
+      if (currentTaskId === taskId) {
+        return true; // Circular dependency found
+      }
+
+      // Get all tasks that currentTaskId depends on
+      const dependencies = await db
+        .select({ dependsOnTaskId: taskDependencies.dependsOnTaskId })
+        .from(taskDependencies)
+        .where(eq(taskDependencies.taskId, currentTaskId));
+
+      for (const dep of dependencies) {
+        if (!visited.has(dep.dependsOnTaskId)) {
+          stack.push(dep.dependsOnTaskId);
+        }
+      }
+    }
+
+    return false; // No circular dependency
+  }
+
+  // Notifications
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotifications(userId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .where(eq(notifications.read, false))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
+    return newNotification;
+  }
+
+  async markNotificationAsRead(id: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ read: true })
+      .where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ read: true })
+      .where(eq(notifications.userId, userId));
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.id, id));
   }
 }
 

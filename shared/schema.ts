@@ -7,6 +7,9 @@ export const projectStatusEnum = pgEnum('project_status', ['planning', 'in_progr
 export const ticketPriorityEnum = pgEnum('ticket_priority', ['low', 'medium', 'high', 'critical']);
 export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'in_progress', 'resolved', 'closed']);
 export const taskStatusEnum = pgEnum('task_status', ['todo', 'in_progress', 'completed']);
+export const notificationTypeEnum = pgEnum('notification_type', ['task_assigned', 'task_status_changed', 'ticket_assigned', 'ticket_status_changed', 'deadline_approaching', 'comment_added', 'dependency_completed']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'manager', 'member', 'viewer']);
+export const projectPermissionEnum = pgEnum('project_permission', ['read', 'write', 'admin']);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -14,7 +17,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  role: text("role").notNull().default('member'),
+  role: userRoleEnum("role").notNull().default('member'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -66,12 +69,32 @@ export const milestones = pgTable("milestones", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  entityType: text("entity_type"), // 'task', 'ticket', 'project'
+  entityId: varchar("entity_id"), // ID da entidade relacionada
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
   reportedTickets: many(tickets, { relationName: "reporter" }),
   assignedTickets: many(tickets, { relationName: "assignee" }),
   assignedTasks: many(tasks),
+  notifications: many(notifications),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -101,7 +124,7 @@ export const ticketsRelations = relations(tickets, ({ one }) => ({
   }),
 }));
 
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   project: one(projects, {
     fields: [tasks.projectId],
     references: [projects.id],
@@ -110,11 +133,75 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.assigneeId],
     references: [users.id],
   }),
+  dependencies: many(taskDependencies, { relationName: "task" }),
+  dependents: many(taskDependencies, { relationName: "dependsOnTask" }),
 }));
 
 export const milestonesRelations = relations(milestones, ({ one }) => ({
   project: one(projects, {
     fields: [milestones.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const taskDependencies = pgTable("task_dependencies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  dependsOnTaskId: varchar("depends_on_task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const comments = pgTable("comments", {
+  id: text("id").primaryKey().$defaultFn(() => nanoid()),
+  content: text("content").notNull(),
+  ticketId: text("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const projectPermissions = pgTable("project_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  projectId: varchar("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  permission: projectPermissionEnum("permission").notNull().default('read'),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+
+
+export const taskDependenciesRelations = relations(taskDependencies, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskDependencies.taskId],
+    references: [tasks.id],
+    relationName: "task",
+  }),
+  dependsOnTask: one(tasks, {
+    fields: [taskDependencies.dependsOnTaskId],
+    references: [tasks.id],
+    relationName: "dependsOnTask",
+  }),
+}));
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  ticket: one(tickets, {
+    fields: [comments.ticketId],
+    references: [tickets.id],
+  }),
+  author: one(users, {
+    fields: [comments.authorId],
+    references: [users.id],
+  }),
+}));
+
+export const projectPermissionsRelations = relations(projectPermissions, ({ one }) => ({
+  user: one(users, {
+    fields: [projectPermissions.userId],
+    references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [projectPermissions.projectId],
     references: [projects.id],
   }),
 }));
@@ -129,6 +216,9 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  startDate: z.string().transform((str) => new Date(str)),
+  endDate: z.string().transform((str) => new Date(str)),
 });
 
 export const insertTicketSchema = createInsertSchema(tickets).omit({
@@ -148,6 +238,28 @@ export const insertMilestoneSchema = createInsertSchema(milestones).omit({
   createdAt: true,
 });
 
+export const insertTaskDependencySchema = createInsertSchema(taskDependencies).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCommentSchema = createInsertSchema(comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProjectPermissionSchema = createInsertSchema(projectPermissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -159,3 +271,11 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
 export type Milestone = typeof milestones.$inferSelect;
+export type InsertTaskDependency = z.infer<typeof insertTaskDependencySchema>;
+export type TaskDependency = typeof taskDependencies.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
+export type Comment = typeof comments.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertProjectPermission = z.infer<typeof insertProjectPermissionSchema>;
+export type ProjectPermission = typeof projectPermissions.$inferSelect;

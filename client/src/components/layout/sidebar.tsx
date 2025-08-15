@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useKeyboardNavigation } from "@/lib/accessibility";
 import { 
   Home, 
   FolderKanban, 
@@ -7,22 +8,56 @@ import {
   CheckSquare,
   Calendar, 
   BarChart3,
-  User
+  Kanban,
+  User,
+  FileText,
+  Settings
 } from "lucide-react";
+import { useRef } from "react";
 
-const navigation = [
-  { name: "Painel", href: "/", icon: Home },
-  { name: "Projetos", href: "/projects", icon: FolderKanban },
-  { name: "Chamados", href: "/tickets", icon: Ticket },
-  { name: "Tarefas", href: "/tasks", icon: CheckSquare },
-  { name: "Gráficos de Gantt", href: "/gantt", icon: BarChart3 },
-];
+const getNavigation = (role?: string) => {
+  const baseNavigation = [
+    { name: "Painel", href: "/", icon: Home },
+    { name: "Projetos", href: "/projects", icon: FolderKanban },
+    { name: "Chamados", href: "/tickets", icon: Ticket },
+    { name: "Tarefas", href: "/tasks", icon: CheckSquare },
+    { name: "Kanban", href: "/kanban", icon: Kanban },
+    { name: "Gráficos de Gantt", href: "/gantt", icon: BarChart3 },
+    { name: "Calendário", href: "/calendar", icon: Calendar },
+    { name: "Relatórios", href: "/reports", icon: FileText },
+  ];
+  
+  // Adiciona administração apenas para admins
+  if (role === 'admin') {
+    baseNavigation.push({ name: "Administração", href: "/admin", icon: Settings });
+  }
+  
+  return baseNavigation;
+};
 
-export default function Sidebar() {
+interface SidebarProps {
+  role?: string;
+  'aria-label'?: string;
+}
+
+export default function Sidebar({ role, 'aria-label': ariaLabel }: SidebarProps = {}) {
   const [location] = useLocation();
+  const navRef = useRef<HTMLElement>(null);
+  const navigation = getNavigation(role);
+  
+  useKeyboardNavigation({
+    containerRef: navRef,
+    selector: 'a[href]',
+    loop: true
+  });
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col" data-testid="sidebar">
+    <aside 
+      className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col" 
+      data-testid="sidebar"
+      role={role}
+      aria-label={ariaLabel}
+    >
       {/* Logo */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-2">
@@ -34,7 +69,13 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2" data-testid="navigation">
+      <nav 
+        ref={navRef}
+        className="flex-1 p-4 space-y-2" 
+        data-testid="navigation"
+        role="navigation"
+        aria-label="Menu de navegação principal"
+      >
         {navigation.map((item) => {
           const isActive = location === item.href;
           return (
@@ -42,12 +83,14 @@ export default function Sidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition-colors",
+                "flex items-center space-x-3 px-3 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                 isActive
                   ? "bg-primary text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
               data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+              aria-current={isActive ? "page" : undefined}
+              role="menuitem"
             >
               <item.icon className="w-5 h-5" />
               <span>{item.name}</span>

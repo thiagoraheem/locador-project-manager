@@ -109,7 +109,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" data-testid="create-project-modal">
+      <DialogContent className="w-[95vw] max-w-md mx-4 md:mx-auto" data-testid="create-project-modal">
         <DialogHeader>
           <DialogTitle>Criar Novo Projeto</DialogTitle>
           <DialogDescription>
@@ -182,7 +182,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="startDate"
@@ -267,7 +267,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
               />
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex flex-col-reverse md:flex-row justify-end space-y-2 space-y-reverse md:space-y-0 md:space-x-2 pt-4">
               <Button 
                 type="button" 
                 variant="outline" 

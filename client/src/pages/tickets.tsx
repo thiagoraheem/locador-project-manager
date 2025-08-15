@@ -1,16 +1,25 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import Header from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ResponsiveTicketList } from "@/components/responsive/responsive-ticket-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CreateTicketModal from "@/components/ticket/create-ticket-modal";
+import TicketFilters, { type TicketFilters as TicketFiltersType } from "@/components/ticket/ticket-filters";
 import { Ticket, AlertCircle, Clock, CheckCircle, Plus } from "lucide-react";
 import type { Ticket as TicketType } from "@shared/schema";
 
 export default function Tickets() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [filters, setFilters] = useState<TicketFiltersType>({
+    search: "",
+    status: "all",
+    priority: "all",
+    projectId: "all",
+  });
 
   const { data: tickets = [], isLoading } = useQuery<TicketType[]>({
     queryKey: ["/api/tickets"],
@@ -60,8 +69,52 @@ export default function Tickets() {
     return `${Math.floor(diffHours / 24)}d ago`;
   };
 
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(ticket => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch = 
+          ticket.title.toLowerCase().includes(searchLower) ||
+          ticket.description.toLowerCase().includes(searchLower) ||
+          ticket.id.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (filters.status !== "all" && ticket.status !== filters.status) {
+        return false;
+      }
+
+      // Priority filter
+      if (filters.priority !== "all" && ticket.priority !== filters.priority) {
+        return false;
+      }
+
+      // Project filter
+      if (filters.projectId !== "all" && ticket.projectId !== filters.projectId) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [tickets, filters]);
+
   const filterTicketsByStatus = (status: string) => {
-    return tickets.filter(ticket => ticket.status === status);
+    return filteredTickets.filter(ticket => ticket.status === status);
+  };
+
+  const handleFiltersChange = (newFilters: TicketFiltersType) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      search: "",
+      status: "all",
+      priority: "all",
+      projectId: "all",
+    });
   };
 
   return (
@@ -74,33 +127,75 @@ export default function Tickets() {
       />
 
       <div className="p-6">
+        {/* Filters */}
+        <div className="mb-6">
+          <TicketFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onClearFilters={handleClearFilters}
+          />
+        </div>
+
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="all">Todos os Chamados</TabsTrigger>
-            <TabsTrigger value="open">Abertos</TabsTrigger>
-            <TabsTrigger value="in_progress">Em Progresso</TabsTrigger>
-            <TabsTrigger value="resolved">Resolvidos</TabsTrigger>
-            <TabsTrigger value="closed">Fechados</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="grid grid-cols-5">
+              <TabsTrigger value="all">
+                Todos os Chamados
+                <Badge variant="secondary" className="ml-2">
+                  {filteredTickets.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="open">
+                Abertos
+                <Badge variant="secondary" className="ml-2">
+                  {filterTicketsByStatus('open').length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="in_progress">
+                Em Progresso
+                <Badge variant="secondary" className="ml-2">
+                  {filterTicketsByStatus('in_progress').length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="resolved">
+                Resolvidos
+                <Badge variant="secondary" className="ml-2">
+                  {filterTicketsByStatus('resolved').length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="closed">
+                Fechados
+                <Badge variant="secondary" className="ml-2">
+                  {filterTicketsByStatus('closed').length}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+            
+            {filteredTickets.length !== tickets.length && (
+              <div className="text-sm text-gray-500">
+                Mostrando {filteredTickets.length} de {tickets.length} chamados
+              </div>
+            )}
+          </div>
 
           <TabsContent value="all" className="mt-6">
-            <TicketsList tickets={tickets} isLoading={isLoading} />
+            <ResponsiveTicketList tickets={filteredTickets} isLoading={isLoading} />
           </TabsContent>
 
           <TabsContent value="open" className="mt-6">
-            <TicketsList tickets={filterTicketsByStatus('open')} isLoading={isLoading} />
+            <ResponsiveTicketList tickets={filterTicketsByStatus('open')} isLoading={isLoading} />
           </TabsContent>
 
           <TabsContent value="in_progress" className="mt-6">
-            <TicketsList tickets={filterTicketsByStatus('in_progress')} isLoading={isLoading} />
+            <ResponsiveTicketList tickets={filterTicketsByStatus('in_progress')} isLoading={isLoading} />
           </TabsContent>
 
           <TabsContent value="resolved" className="mt-6">
-            <TicketsList tickets={filterTicketsByStatus('resolved')} isLoading={isLoading} />
+            <ResponsiveTicketList tickets={filterTicketsByStatus('resolved')} isLoading={isLoading} />
           </TabsContent>
 
           <TabsContent value="closed" className="mt-6">
-            <TicketsList tickets={filterTicketsByStatus('closed')} isLoading={isLoading} />
+            <ResponsiveTicketList tickets={filterTicketsByStatus('closed')} isLoading={isLoading} />
           </TabsContent>
         </Tabs>
       </div>
@@ -112,81 +207,5 @@ export default function Tickets() {
     </div>
   );
 
-  function TicketsList({ tickets, isLoading }: { tickets: TicketType[], isLoading: boolean }) {
-    if (isLoading) {
-      return (
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded mb-4"></div>
-                <div className="flex justify-between">
-                  <div className="h-5 bg-gray-200 rounded w-20"></div>
-                  <div className="h-5 bg-gray-200 rounded w-16"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      );
-    }
 
-    if (tickets.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <Ticket className="mx-auto h-16 w-16 text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">Nenhum chamado encontrado</h3>
-          <p className="mt-2 text-sm text-gray-500">
-            Nenhum chamado corresponde ao filtro atual. Tente um status diferente ou crie um novo chamado.
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        {tickets.map((ticket) => (
-          <Card
-            key={ticket.id}
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            data-testid={`ticket-card-${ticket.id}`}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-start space-x-3">
-                  <div className={`p-2 rounded-lg ${getPriorityColor(ticket.priority)} bg-opacity-10`}>
-                    {getPriorityIcon(ticket.priority)}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-text mb-1">{ticket.title}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
-                    <div className="flex items-center space-x-2">
-                      <Badge className={getPriorityColor(ticket.priority)}>
-                        {ticket.priority}
-                      </Badge>
-                      <Badge variant="outline" className={getStatusColor(ticket.status)}>
-                        {ticket.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" data-testid={`view-ticket-${ticket.id}`}>
-                  Ver Detalhes
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-100">
-                <div className="flex items-center space-x-4">
-                  <span>ID: #{ticket.id.slice(0, 8)}</span>
-                  {ticket.projectId && <span>Projeto: {ticket.projectId.slice(0, 8)}</span>}
-                </div>
-                <span>{formatTimeAgo(ticket.createdAt.toString())}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
 }

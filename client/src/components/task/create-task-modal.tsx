@@ -111,7 +111,7 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[95vw] max-w-2xl mx-4 md:mx-auto" data-testid="create-task-modal">
         <DialogHeader>
           <DialogTitle>Criar Nova Tarefa</DialogTitle>
         </DialogHeader>
@@ -231,7 +231,7 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="startDate"
@@ -317,7 +317,7 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
               />
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex flex-col-reverse md:flex-row justify-end space-y-2 space-y-reverse md:space-y-0 md:space-x-2 pt-4">
               <Button
                 type="button"
                 variant="outline"
