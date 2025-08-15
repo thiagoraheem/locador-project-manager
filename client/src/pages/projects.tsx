@@ -28,7 +28,7 @@ export default function Projects() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString('pt-BR', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -38,12 +38,12 @@ export default function Projects() {
   return (
     <div className="flex-1 overflow-y-auto">
       <Header 
-        title="Projects" 
-        subtitle="Manage your development projects and track their progress."
+        title="Projetos" 
+        subtitle="Gerencie seus projetos de desenvolvimento e acompanhe seu progresso."
         onCreateNew={() => setShowCreateModal(true)}
-        createButtonText="New Project"
+        createButtonText="Novo Projeto"
       />
-      
+
       <div className="p-6">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -64,16 +64,16 @@ export default function Projects() {
         ) : projects.length === 0 ? (
           <div className="text-center py-12">
             <FolderKanban className="mx-auto h-16 w-16 text-gray-400" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No projects yet</h3>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">Nenhum projeto ainda</h3>
             <p className="mt-2 text-sm text-gray-500">
-              Get started by creating your first project to track development progress.
+              Comece criando seu primeiro projeto para acompanhar o progresso do desenvolvimento.
             </p>
             <Button 
               onClick={() => setShowCreateModal(true)}
               className="mt-4 bg-primary text-white hover:bg-primary/90"
               data-testid="create-first-project-button"
             >
-              Create Your First Project
+              Crie Seu Primeiro Projeto
             </Button>
           </div>
         ) : (
@@ -103,24 +103,24 @@ export default function Projects() {
                   </div>
 
                   <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                    {project.description || "No description provided"}
+                    {project.description || "Nenhuma descrição fornecida"}
                   </p>
 
                   <div className="space-y-2 text-xs text-gray-500">
                     <div className="flex items-center">
                       <Calendar className="w-3 h-3 mr-2" />
-                      <span>Start: {formatDate(project.startDate.toString())}</span>
+                      <span>Início: {formatDate(project.startDate.toString())}</span>
                     </div>
                     <div className="flex items-center">
                       <Calendar className="w-3 h-3 mr-2" />
-                      <span>End: {formatDate(project.endDate.toString())}</span>
+                      <span>Fim: {formatDate(project.endDate.toString())}</span>
                     </div>
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                     <div className="flex items-center text-xs text-gray-500">
                       <Users className="w-3 h-3 mr-1" />
-                      <span>Team</span>
+                      <span>Equipe</span>
                     </div>
                     <div className="flex gap-2">
                       <CreateTaskModal projectId={project.id}>

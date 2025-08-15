@@ -19,10 +19,10 @@ export default function GanttCharts() {
   return (
     <div className="flex-1 overflow-y-auto">
       <Header 
-        title="Gantt Charts" 
+        title="Gráficos de Gantt" 
         subtitle="Visualize project timelines and track progress with interactive Gantt charts."
       />
-      
+
       <div className="p-6">
         <Card>
           <div className="p-6 border-b border-gray-100">
@@ -53,7 +53,7 @@ export default function GanttCharts() {
               </div>
             </div>
           </div>
-          
+
           <CardContent className="p-6">
             {projectsLoading || tasksLoading ? (
               <div className="space-y-4">

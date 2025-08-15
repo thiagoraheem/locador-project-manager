@@ -79,7 +79,7 @@ export default function Tasks() {
           </Button>
         </CreateTaskModal>
       </div>
-      
+
       <div className="p-6">
         {/* Filters */}
         <div className="flex gap-4 mb-6">

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CreateTicketModal from "@/components/ticket/create-ticket-modal";
-import { Ticket, AlertCircle, Clock, CheckCircle } from "lucide-react";
+import { Ticket, AlertCircle, Clock, CheckCircle, Plus } from "lucide-react";
 import type { Ticket as TicketType } from "@shared/schema";
 
 export default function Tickets() {
@@ -54,7 +54,7 @@ export default function Tickets() {
     const now = new Date();
     const created = new Date(date);
     const diffHours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffHours < 1) return 'Just now';
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${Math.floor(diffHours / 24)}d ago`;
@@ -66,21 +66,21 @@ export default function Tickets() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <Header 
-        title="Tickets" 
-        subtitle="Manage support tickets, bug reports, and feature requests."
+      <Header
+        title="Chamados"
+        subtitle="Gerencie chamados de suporte, relatórios de bugs e solicitações de recursos."
         onCreateNew={() => setShowCreateModal(true)}
-        createButtonText="New Ticket"
+        createButtonText="Novo Chamado"
       />
-      
+
       <div className="p-6">
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="all">All Tickets</TabsTrigger>
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-            <TabsTrigger value="resolved">Resolved</TabsTrigger>
-            <TabsTrigger value="closed">Closed</TabsTrigger>
+            <TabsTrigger value="all">Todos os Chamados</TabsTrigger>
+            <TabsTrigger value="open">Abertos</TabsTrigger>
+            <TabsTrigger value="in_progress">Em Progresso</TabsTrigger>
+            <TabsTrigger value="resolved">Resolvidos</TabsTrigger>
+            <TabsTrigger value="closed">Fechados</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-6">
@@ -105,7 +105,7 @@ export default function Tickets() {
         </Tabs>
       </div>
 
-      <CreateTicketModal 
+      <CreateTicketModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
       />
@@ -136,9 +136,9 @@ export default function Tickets() {
       return (
         <div className="text-center py-12">
           <Ticket className="mx-auto h-16 w-16 text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">No tickets found</h3>
+          <h3 className="mt-4 text-lg font-medium text-gray-900">Nenhum chamado encontrado</h3>
           <p className="mt-2 text-sm text-gray-500">
-            No tickets match the current filter. Try a different status or create a new ticket.
+            Nenhum chamado corresponde ao filtro atual. Tente um status diferente ou crie um novo chamado.
           </p>
         </div>
       );
@@ -147,8 +147,8 @@ export default function Tickets() {
     return (
       <div className="space-y-4">
         {tickets.map((ticket) => (
-          <Card 
-            key={ticket.id} 
+          <Card
+            key={ticket.id}
             className="hover:shadow-md transition-shadow cursor-pointer"
             data-testid={`ticket-card-${ticket.id}`}
           >
@@ -172,14 +172,14 @@ export default function Tickets() {
                   </div>
                 </div>
                 <Button variant="outline" size="sm" data-testid={`view-ticket-${ticket.id}`}>
-                  View Details
+                  Ver Detalhes
                 </Button>
               </div>
 
               <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-100">
                 <div className="flex items-center space-x-4">
                   <span>ID: #{ticket.id.slice(0, 8)}</span>
-                  {ticket.projectId && <span>Project: {ticket.projectId.slice(0, 8)}</span>}
+                  {ticket.projectId && <span>Projeto: {ticket.projectId.slice(0, 8)}</span>}
                 </div>
                 <span>{formatTimeAgo(ticket.createdAt.toString())}</span>
               </div>

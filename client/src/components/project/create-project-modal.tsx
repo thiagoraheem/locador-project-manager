@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -38,13 +39,13 @@ import { insertProjectSchema } from "@shared/schema";
 
 const formSchema = insertProjectSchema.extend({
   startDate: z.date({
-    required_error: "Start date is required",
+    required_error: "A data de início é obrigatória",
   }),
   endDate: z.date({
-    required_error: "End date is required",
+    required_error: "A data de fim é obrigatória",
   }),
 }).refine((data) => data.endDate > data.startDate, {
-  message: "End date must be after start date",
+  message: "A data de fim deve ser posterior à data de início",
   path: ["endDate"],
 });
 
@@ -84,16 +85,16 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
       toast({
-        title: "Project created",
-        description: "Your new project has been created successfully.",
+        title: "Projeto criado",
+        description: "Seu novo projeto foi criado com sucesso.",
       });
       onOpenChange(false);
       form.reset();
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create project",
+        title: "Erro",
+        description: error.message || "Falha ao criar projeto",
         variant: "destructive",
       });
     },
@@ -110,7 +111,10 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" data-testid="create-project-modal">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>Criar Novo Projeto</DialogTitle>
+          <DialogDescription>
+          Adicione um novo projeto ao seu workspace.
+        </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -120,10 +124,10 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Project Name</FormLabel>
+                  <FormLabel>Nome do Projeto</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Enter project name" 
+                      placeholder="Digite o nome do projeto" 
                       {...field} 
                       data-testid="project-name-input"
                     />
@@ -138,10 +142,10 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Describe your project"
+                      placeholder="Digite a descrição do projeto"
                       rows={3}
                       {...field}
                       value={field.value || ""}
@@ -162,15 +166,15 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="project-status-select">
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue placeholder="Selecione o status" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="planning">Planning</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="review">Review</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="on_hold">On Hold</SelectItem>
+                      <SelectItem value="planning">Planejamento</SelectItem>
+                      <SelectItem value="in_progress">Em Andamento</SelectItem>
+                      <SelectItem value="review">Revisão</SelectItem>
+                      <SelectItem value="completed">Concluído</SelectItem>
+                      <SelectItem value="on_hold">Em Espera</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -184,7 +188,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                 name="startDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Start Date</FormLabel>
+                    <FormLabel>Data de Início</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -199,7 +203,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                             {field.value ? (
                               format(field.value, "PPP")
                             ) : (
-                              <span>Pick a date</span>
+                              <span>Selecione uma data</span>
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -224,7 +228,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                 name="endDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>End Date</FormLabel>
+                    <FormLabel>Data de Fim</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -239,7 +243,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                             {field.value ? (
                               format(field.value, "PPP")
                             ) : (
-                              <span>Pick a date</span>
+                              <span>Selecione uma data</span>
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -270,7 +274,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                 onClick={() => onOpenChange(false)}
                 data-testid="cancel-project-button"
               >
-                Cancel
+                Cancelar
               </Button>
               <Button 
                 type="submit" 
@@ -278,7 +282,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                 className="bg-primary text-white hover:bg-primary/90"
                 data-testid="submit-project-button"
               >
-                {isSubmitting ? "Creating..." : "Create Project"}
+                {isSubmitting ? "Criando..." : "Criar Projeto"}
               </Button>
             </div>
           </form>

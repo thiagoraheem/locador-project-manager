@@ -54,7 +54,7 @@ export default function Dashboard() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', { 
+    return new Date(date).toLocaleDateString('pt-BR', { 
       month: 'short', 
       day: 'numeric' 
     });
@@ -64,19 +64,19 @@ export default function Dashboard() {
     const now = new Date();
     const created = new Date(date);
     const diffHours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60));
-    
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
+
+    if (diffHours < 1) return 'Agora mesmo';
+    if (diffHours < 24) return `${diffHours}h atrás`;
+    return `${Math.floor(diffHours / 24)}d atrás`;
   };
 
   return (
     <div className="flex-1 overflow-y-auto">
       <Header 
-        title="Dashboard" 
-        subtitle="Welcome back! Here's what's happening with your projects."
+        title="Painel" 
+        subtitle="Bem-vindo de volta! Veja o que está acontecendo em seus projetos."
       />
-      
+
       <div className="p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -84,7 +84,7 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Active Projects</p>
+                  <p className="text-sm text-gray-500">Projetos Ativos</p>
                   <p className="text-2xl font-semibold text-text" data-testid="stat-active-projects">
                     {statsLoading ? '...' : stats?.activeProjects || 0}
                   </p>
@@ -96,7 +96,7 @@ export default function Dashboard() {
               <div className="flex items-center mt-4 text-sm">
                 <ArrowUp className="text-success mr-1 w-4 h-4" />
                 <span className="text-success">+8%</span>
-                <span className="text-gray-500 ml-2">vs last month</span>
+                <span className="text-gray-500 ml-2">vs último mês</span>
               </div>
             </CardContent>
           </Card>
@@ -105,7 +105,7 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Open Tickets</p>
+                  <p className="text-sm text-gray-500">Chamados Abertos</p>
                   <p className="text-2xl font-semibold text-text" data-testid="stat-open-tickets">
                     {statsLoading ? '...' : stats?.openTickets || 0}
                   </p>
@@ -117,7 +117,7 @@ export default function Dashboard() {
               <div className="flex items-center mt-4 text-sm">
                 <ArrowUp className="text-success mr-1 w-4 h-4" />
                 <span className="text-success">+12%</span>
-                <span className="text-gray-500 ml-2">vs last week</span>
+                <span className="text-gray-500 ml-2">vs última semana</span>
               </div>
             </CardContent>
           </Card>
@@ -126,7 +126,7 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Completed Tasks</p>
+                  <p className="text-sm text-gray-500">Tarefas Completas</p>
                   <p className="text-2xl font-semibold text-text" data-testid="stat-completed-tasks">
                     {statsLoading ? '...' : stats?.completedTasks || 0}
                   </p>
@@ -138,7 +138,7 @@ export default function Dashboard() {
               <div className="flex items-center mt-4 text-sm">
                 <ArrowUp className="text-success mr-1 w-4 h-4" />
                 <span className="text-success">+24%</span>
-                <span className="text-gray-500 ml-2">vs last month</span>
+                <span className="text-gray-500 ml-2">vs último mês</span>
               </div>
             </CardContent>
           </Card>
@@ -147,7 +147,7 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Team Members</p>
+                  <p className="text-sm text-gray-500">Membros da Equipe</p>
                   <p className="text-2xl font-semibold text-text" data-testid="stat-team-members">
                     {statsLoading ? '...' : stats?.teamMembers || 0}
                   </p>
@@ -159,7 +159,7 @@ export default function Dashboard() {
               <div className="flex items-center mt-4 text-sm">
                 <ArrowUp className="text-success mr-1 w-4 h-4" />
                 <span className="text-success">+3</span>
-                <span className="text-gray-500 ml-2">new this month</span>
+                <span className="text-gray-500 ml-2">novos este mês</span>
               </div>
             </CardContent>
           </Card>
@@ -171,9 +171,9 @@ export default function Dashboard() {
             <Card>
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-text">Recent Projects</h3>
+                  <h3 className="text-lg font-semibold text-text">Projetos Recentes</h3>
                   <Button variant="link" className="text-primary text-sm font-medium">
-                    View All
+                    Ver Todos
                   </Button>
                 </div>
               </div>
@@ -189,8 +189,8 @@ export default function Dashboard() {
                 ) : recentProjects.length === 0 ? (
                   <div className="text-center py-8">
                     <FolderKanban className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No projects</h3>
-                    <p className="mt-1 text-sm text-gray-500">Get started by creating a new project.</p>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum projeto</h3>
+                    <p className="mt-1 text-sm text-gray-500">Comece criando um novo projeto.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -214,7 +214,7 @@ export default function Dashboard() {
                             {project.status.replace('_', ' ')}
                           </span>
                           <p className="text-sm text-gray-500 mt-1">
-                            Due {formatDate(project.endDate.toString())}
+                            Devido em {formatDate(project.endDate.toString())}
                           </p>
                         </div>
                       </div>
@@ -230,9 +230,9 @@ export default function Dashboard() {
             <Card>
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-text">Recent Tickets</h3>
+                  <h3 className="text-lg font-semibold text-text">Chamados Recentes</h3>
                   <Button size="sm" className="bg-primary text-white hover:bg-primary/90">
-                    New Ticket
+                    Novo Chamado
                   </Button>
                 </div>
               </div>
@@ -248,8 +248,8 @@ export default function Dashboard() {
                 ) : recentTickets.length === 0 ? (
                   <div className="text-center py-8">
                     <Ticket className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No tickets</h3>
-                    <p className="mt-1 text-sm text-gray-500">Create your first support ticket.</p>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum chamado</h3>
+                    <p className="mt-1 text-sm text-gray-500">Crie seu primeiro ticket de suporte.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -290,8 +290,8 @@ export default function Dashboard() {
               <div className="w-12 h-12 bg-primary bg-opacity-10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-opacity-20">
                 <Plus className="text-primary text-lg" />
               </div>
-              <h4 className="font-semibold text-text mb-2">Create Project</h4>
-              <p className="text-sm text-gray-500">Start a new development project with timeline and milestones</p>
+              <h4 className="font-semibold text-text mb-2">Criar Projeto</h4>
+              <p className="text-sm text-gray-500">Inicie um novo projeto de desenvolvimento com cronograma e marcos</p>
             </div>
           </Button>
 
@@ -304,8 +304,8 @@ export default function Dashboard() {
               <div className="w-12 h-12 bg-secondary bg-opacity-10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-opacity-20">
                 <Ticket className="text-secondary text-lg" />
               </div>
-              <h4 className="font-semibold text-text mb-2">Submit Ticket</h4>
-              <p className="text-sm text-gray-500">Report bugs, request features, or ask for support</p>
+              <h4 className="font-semibold text-text mb-2">Enviar Chamado</h4>
+              <p className="text-sm text-gray-500">Reporte bugs, solicite recursos ou peça suporte</p>
             </div>
           </Button>
 
@@ -318,8 +318,8 @@ export default function Dashboard() {
               <div className="w-12 h-12 bg-success bg-opacity-10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-opacity-20">
                 <Calendar className="text-success text-lg" />
               </div>
-              <h4 className="font-semibold text-text mb-2">View Schedule</h4>
-              <p className="text-sm text-gray-500">Check delivery timelines and upcoming milestones</p>
+              <h4 className="font-semibold text-text mb-2">Ver Agenda</h4>
+              <p className="text-sm text-gray-500">Verifique os prazos de entrega e marcos futuros</p>
             </div>
           </Button>
 
@@ -332,8 +332,8 @@ export default function Dashboard() {
               <div className="w-12 h-12 bg-accent bg-opacity-10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-opacity-20">
                 <BarChart3 className="text-accent text-lg" />
               </div>
-              <h4 className="font-semibold text-text mb-2">Generate Report</h4>
-              <p className="text-sm text-gray-500">Export project progress and team performance data</p>
+              <h4 className="font-semibold text-text mb-2">Gerar Relatório</h4>
+              <p className="text-sm text-gray-500">Exporte o progresso do projeto e os dados de desempenho da equipe</p>
             </div>
           </Button>
         </div>

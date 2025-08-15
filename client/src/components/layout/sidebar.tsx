@@ -11,11 +11,11 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Tickets", href: "/tickets", icon: Ticket },
-  { name: "Tasks", href: "/tasks", icon: CheckSquare },
-  { name: "Gantt Charts", href: "/gantt", icon: BarChart3 },
+  { name: "Painel", href: "/", icon: Home },
+  { name: "Projetos", href: "/projects", icon: FolderKanban },
+  { name: "Chamados", href: "/tickets", icon: Ticket },
+  { name: "Tarefas", href: "/tasks", icon: CheckSquare },
+  { name: "Gráficos de Gantt", href: "/gantt", icon: BarChart3 },
 ];
 
 export default function Sidebar() {
@@ -63,7 +63,7 @@ export default function Sidebar() {
             <User className="text-white text-sm" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium" data-testid="user-name">Project Manager</p>
+            <p className="text-sm font-medium" data-testid="user-name">Gerente de Projeto</p>
             <p className="text-xs text-gray-500" data-testid="user-role">Admin</p>
           </div>
         </div>

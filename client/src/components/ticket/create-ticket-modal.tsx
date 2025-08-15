@@ -99,7 +99,7 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" data-testid="create-ticket-modal">
         <DialogHeader>
-          <DialogTitle>Create New Ticket</DialogTitle>
+          <DialogTitle>Criar Novo Chamado</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -109,10 +109,10 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel>Título</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Enter ticket title" 
+                      placeholder="Digite o título do chamado" 
                       {...field} 
                       data-testid="ticket-title-input"
                     />
@@ -127,10 +127,10 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Describe the issue or request in detail"
+                      placeholder="Digite a descrição do chamado"
                       rows={4}
                       {...field} 
                       data-testid="ticket-description-input"
@@ -147,18 +147,18 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Priority</FormLabel>
+                    <FormLabel>Prioridade</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="ticket-priority-select">
-                          <SelectValue placeholder="Select priority" />
+                          <SelectValue placeholder="Selecione a prioridade" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="low">Baixa</SelectItem>
+                        <SelectItem value="medium">Média</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="critical">Crítica</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -171,15 +171,15 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
                 name="projectId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Project (Optional)</FormLabel>
+                    <FormLabel>Projeto (Opcional)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="ticket-project-select">
-                          <SelectValue placeholder="Select project" />
+                          <SelectValue placeholder="Selecione o projeto" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No project</SelectItem>
+                        <SelectItem value="">Nenhum projeto</SelectItem>
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
@@ -200,7 +200,7 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
                 onClick={() => onOpenChange(false)}
                 data-testid="cancel-ticket-button"
               >
-                Cancel
+                Cancelar
               </Button>
               <Button 
                 type="submit" 
@@ -208,7 +208,7 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
                 className="bg-primary text-white hover:bg-primary/90"
                 data-testid="submit-ticket-button"
               >
-                {isSubmitting ? "Creating..." : "Create Ticket"}
+                {isSubmitting ? "Criando..." : "Criar Chamado"}
               </Button>
             </div>
           </form>

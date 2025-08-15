@@ -122,7 +122,7 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Título</FormLabel>
+                  <FormLabel>Título da Tarefa</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Digite o título da tarefa"
