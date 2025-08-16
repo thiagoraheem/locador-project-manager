@@ -1,14 +1,13 @@
 import { db } from './db';
-import { users, projects, projectPermissions } from '../shared/schema';
+import { users, projects, projectUserPermissions } from '../shared/schema';
 import { eq, and } from 'drizzle-orm';
-import type { InsertProjectPermission, ProjectPermission } from '../shared/schema';
 
 // Função para adicionar permissão de usuário a um projeto
 export async function addUserToProject(
   userId: string,
   projectId: string,
   permission: 'read' | 'write' | 'admin' = 'read'
-): Promise<ProjectPermission | null> {
+): Promise<any | null> {
   try {
     // Verificar se o usuário e projeto existem
     const [user, project] = await Promise.all([
@@ -23,11 +22,11 @@ export async function addUserToProject(
     // Verificar se a permissão já existe
     const existingPermission = await db
       .select()
-      .from(projectPermissions)
+      .from(projectUserPermissions)
       .where(
         and(
-          eq(projectPermissions.userId, userId),
-          eq(projectPermissions.projectId, projectId)
+          eq(projectUserPermissions.userId, userId),
+          eq(projectUserPermissions.projectId, projectId)
         )
       )
       .limit(1);

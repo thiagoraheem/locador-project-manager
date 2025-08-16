@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from './db';
-import { users, projectPermissions } from '../shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { users } from '../shared/schema';
+import { eq } from 'drizzle-orm';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

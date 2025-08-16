@@ -109,7 +109,7 @@ export default function CalendarView({ events = mockEvents, onEventClick, onDate
     } else {
       setFilteredEvents(events.filter(event => event.type === filterType));
     }
-  }, [events, filterType]);
+  }, [filterType]); // Removed events from dependencies to prevent infinite loop
 
   const getEventsForDate = (date: Date) => {
     return filteredEvents.filter(event => isSameDay(event.date, date));
