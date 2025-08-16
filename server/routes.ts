@@ -4,15 +4,15 @@ import { storage } from "./storage";
 import { insertProjectSchema, insertTicketSchema, insertTaskSchema, insertMilestoneSchema, insertCommentSchema, insertTaskDependencySchema, insertNotificationSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requireRole, requireProjectPermission, type AuthenticatedRequest } from "./auth";
-import { 
-  addUserToProject, 
-  removeUserFromProject, 
-  getProjectUsers, 
-  getUserProjects, 
-  getUserProjectPermission,
-  updateUserRole,
-  canUserPerformAction 
-} from "./permissions";
+// import { 
+//   addUserToProject, 
+//   removeUserFromProject, 
+//   getProjectUsers, 
+//   getUserProjects, 
+//   getUserProjectPermission,
+//   updateUserRole,
+//   canUserPerformAction 
+// } from "./permissions";
 import { registerUserRoutes } from "./routes/users";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -514,6 +514,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ canPerform });
     } catch (error) {
       res.status(500).json({ message: "Failed to check user permissions" });
+    }
+  });
+
+  // Comments routes
+  app.get("/api/comments/:ticketId", async (req, res) => {
+    try {
+      const comments = await storage.getComments(req.params.ticketId);
+      res.json(comments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.post("/api/comments", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = insertCommentSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid comment data", errors: result.error.errors });
+      }
+
+      const comment = await storage.createComment(result.data);
+      res.status(201).json(comment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.patch("/api/comments/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const updates = req.body;
+      const comment = await storage.updateComment(req.params.id, updates);
+      res.json(comment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update comment" });
+    }
+  });
+
+  app.delete("/api/comments/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      await storage.deleteComment(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+
+  // Task Dependencies routes
+  app.get("/api/tasks/:taskId/dependencies", async (req, res) => {
+    try {
+      const dependencies = await storage.getTaskDependencies(req.params.taskId);
+      res.json(dependencies);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch task dependencies" });
+    }
+  });
+
+  app.post("/api/task-dependencies", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = insertTaskDependencySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid dependency data", errors: result.error.errors });
+      }
+
+      const isCircular = await storage.checkCircularDependency(
+        result.data.taskId,
+        result.data.dependsOnTaskId
+      );
+
+      if (isCircular) {
+        return res.status(400).json({ message: "Circular dependency detected" });
+      }
+
+      const dependency = await storage.createTaskDependency(result.data);
+      res.status(201).json(dependency);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create task dependency" });
+    }
+  });
+
+  app.delete("/api/task-dependencies/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      await storage.deleteTaskDependency(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete task dependency" });
+    }
+  });
+
+  // Milestones routes  
+  app.get("/api/milestones", async (req, res) => {
+    try {
+      const projectId = req.query.projectId as string;
+      const milestones = await storage.getMilestones(projectId);
+      res.json(milestones);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch milestones" });
+    }
+  });
+
+  app.post("/api/milestones", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = insertMilestoneSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid milestone data", errors: result.error.errors });
+      }
+
+      const milestone = await storage.createMilestone(result.data);
+      res.status(201).json(milestone);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create milestone" });
     }
   });
 
