@@ -41,10 +41,13 @@ const formSchema = insertProjectSchema.extend({
   startDate: z.date({
     required_error: "A data de início é obrigatória",
   }),
-  endDate: z.date({
-    required_error: "A data de fim é obrigatória",
-  }),
-}).refine((data) => data.endDate > data.startDate, {
+  endDate: z.date().optional(),
+}).refine((data) => {
+  if (data.endDate && data.startDate) {
+    return data.endDate > data.startDate;
+  }
+  return true;
+}, {
   message: "A data de fim deve ser posterior à data de início",
   path: ["endDate"],
 });
@@ -77,7 +80,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
       const response = await apiRequest('POST', '/api/projects', {
         ...data,
         startDate: data.startDate.toISOString(),
-        endDate: data.endDate.toISOString(),
+        endDate: data.endDate ? data.endDate.toISOString() : null,
       });
       return response.json();
     },
@@ -228,7 +231,7 @@ export default function CreateProjectModal({ open, onOpenChange }: CreateProject
                 name="endDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Data de Fim</FormLabel>
+                    <FormLabel>Data de Fim (Opcional)</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>

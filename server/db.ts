@@ -34,12 +34,12 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS tickets (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
-    description TEXT,
-    status TEXT NOT NULL DEFAULT 'open',
+    description TEXT NOT NULL,
     priority TEXT NOT NULL DEFAULT 'medium',
-    project_id TEXT NOT NULL,
-    assigned_to TEXT,
-    created_by TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',
+    project_id TEXT,
+    reporter_id TEXT NOT NULL,
+    assignee_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -49,9 +49,11 @@ sqlite.exec(`
     title TEXT NOT NULL,
     description TEXT,
     status TEXT NOT NULL DEFAULT 'todo',
+    priority TEXT NOT NULL DEFAULT 'medium',
     project_id TEXT NOT NULL,
-    assigned_to TEXT,
-    created_by TEXT NOT NULL,
+    assignee_id TEXT,
+    start_date DATETIME,
+    end_date DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );

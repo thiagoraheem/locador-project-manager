@@ -7,6 +7,7 @@ export const projectStatusEnum = pgEnum('project_status', ['planning', 'in_progr
 export const ticketPriorityEnum = pgEnum('ticket_priority', ['low', 'medium', 'high', 'critical']);
 export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'in_progress', 'resolved', 'closed']);
 export const taskStatusEnum = pgEnum('task_status', ['todo', 'in_progress', 'completed']);
+export const taskPriorityEnum = pgEnum('task_priority', ['low', 'medium', 'high']);
 export const notificationTypeEnum = pgEnum('notification_type', ['task_assigned', 'task_status_changed', 'ticket_assigned', 'ticket_status_changed', 'deadline_approaching', 'comment_added', 'dependency_completed']);
 export const userRoleEnum = pgEnum('user_role', ['admin', 'manager', 'member', 'viewer']);
 export const projectPermissionEnum = pgEnum('project_permission', ['read', 'write', 'admin']);
@@ -27,7 +28,7 @@ export const projects = pgTable("projects", {
   description: text("description"),
   status: projectStatusEnum("status").notNull().default('planning'),
   startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
+  endDate: timestamp("end_date"),
   createdBy: varchar("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -51,6 +52,7 @@ export const tasks = pgTable("tasks", {
   title: text("title").notNull(),
   description: text("description"),
   status: taskStatusEnum("status").notNull().default('todo'),
+  priority: taskPriorityEnum("priority").notNull().default('medium'),
   projectId: varchar("project_id").references(() => projects.id).notNull(),
   assigneeId: varchar("assignee_id").references(() => users.id),
   startDate: timestamp("start_date"),
@@ -218,7 +220,7 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   updatedAt: true,
 }).extend({
   startDate: z.string().transform((str) => new Date(str)),
-  endDate: z.string().transform((str) => new Date(str)),
+  endDate: z.string().optional().transform((str) => str ? new Date(str) : undefined),
 });
 
 export const insertTicketSchema = createInsertSchema(tickets).omit({

@@ -41,10 +41,13 @@ const formSchema = insertProjectSchema.extend({
   startDate: z.date({
     required_error: "A data de início é obrigatória",
   }),
-  endDate: z.date({
-    required_error: "A data de fim é obrigatória",
-  }),
-}).refine((data) => data.endDate > data.startDate, {
+  endDate: z.date().optional(),
+}).refine((data) => {
+  if (data.endDate && data.startDate) {
+    return data.endDate > data.startDate;
+  }
+  return true;
+}, {
   message: "A data de fim deve ser posterior à data de início",
   path: ["endDate"],
 });
@@ -57,7 +60,7 @@ interface Project {
   description?: string;
   status: string;
   startDate: string;
-  endDate: string;
+  endDate?: string;
   createdBy: string;
 }
 
@@ -90,7 +93,7 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
         description: project.description || "",
         status: project.status,
         startDate: new Date(project.startDate),
-        endDate: new Date(project.endDate),
+        endDate: project.endDate ? new Date(project.endDate) : undefined,
         createdBy: project.createdBy,
       });
     }
@@ -104,7 +107,7 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
       const response = await apiRequest('PUT', `/api/projects/${project.id}`, {
         ...data,
         startDate: data.startDate.toISOString(),
-        endDate: data.endDate.toISOString(),
+        endDate: data.endDate ? data.endDate.toISOString() : null,
       });
       return response.json();
     },
@@ -257,7 +260,7 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
                 name="endDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Data de Fim</FormLabel>
+                    <FormLabel>Data de Fim (Opcional)</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
