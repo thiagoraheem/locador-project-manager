@@ -6,7 +6,8 @@ import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
-import { insertTaskSchema, type InsertTask, type Project, type User } from "@shared/schema";
+import { insertTaskSchema, type InsertTask } from "@shared/schema";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -40,9 +41,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 
-const taskFormSchema = insertTaskSchema.extend({
-  startDate: insertTaskSchema.shape.startDate.optional(),
-  endDate: insertTaskSchema.shape.endDate.optional(),
+const taskFormSchema = z.object({
+  title: z.string().min(1, "Título é obrigatório"),
+  description: z.string().optional(),
+  status: z.enum(["todo", "in_progress", "in_review", "done"]),
+  projectId: z.string().min(1, "Projeto é obrigatório"),
+  assigneeId: z.string().min(1, "Responsável é obrigatório"),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
+}).refine((data) => {
+  if (data.startDate && data.endDate) {
+    return data.endDate >= data.startDate;
+  }
+  return true;
+}, {
+  message: "Data de término deve ser posterior à data de início",
+  path: ["endDate"],
 });
 
 interface CreateTaskModalProps {
@@ -55,15 +69,15 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: users = [] } = useQuery<User[]>({
+  const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],
   });
 
-  const { data: projects = [] } = useQuery<Project[]>({
+  const { data: projects = [] } = useQuery<any[]>({
     queryKey: ["/api/projects"],
   });
 
-  const form = useForm<InsertTask>({
+  const form = useForm<z.infer<typeof taskFormSchema>>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
       title: "",
@@ -97,8 +111,15 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
     },
   });
 
-  function onSubmit(values: InsertTask) {
-    createTaskMutation.mutate(values);
+  function onSubmit(values: z.infer<typeof taskFormSchema>) {
+    // Convert dates to strings for the API
+    const dataToSubmit: InsertTask = {
+      ...values,
+      startDate: values.startDate ? values.startDate.toISOString().split('T')[0] : undefined,
+      endDate: values.endDate ? values.endDate.toISOString().split('T')[0] : undefined,
+    };
+    
+    createTaskMutation.mutate(dataToSubmit);
   }
 
   return (
