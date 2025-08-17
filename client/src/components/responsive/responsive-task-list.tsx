@@ -3,8 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, Calendar, User, Clock, MoreVertical } from "lucide-react";
-import type { Task } from "@shared/schema";
+import type { tasks } from "@shared/schema";
 import { formatDate } from "@/lib/utils";
+
+type Task = typeof tasks.$inferSelect;
 
 interface ResponsiveTaskListProps {
   tasks: Task[];
