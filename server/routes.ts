@@ -50,7 +50,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects", async (req, res) => {
     try {
-      const validatedData = insertProjectSchema.parse(req.body);
+      // For now, use the first available user as creator since we don't have authentication
+      const users = await storage.getUsers();
+      const defaultUser = users[0];
+      
+      if (!defaultUser) {
+        return res.status(400).json({ message: "No users found in database" });
+      }
+      
+      // Set the createdBy to the first available user
+      const projectData = { ...req.body, createdBy: defaultUser.id };
+      
+      const validatedData = insertProjectSchema.parse(projectData);
       const project = await storage.createProject(validatedData);
       res.status(201).json(project);
     } catch (error) {
