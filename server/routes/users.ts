@@ -8,14 +8,13 @@ import { storage } from '../storage';
 const userSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  role: z.enum(['admin', 'manager', 'user']),
-  status: z.enum(['active', 'inactive'])
+  role: z.enum(['admin', 'manager', 'member', 'viewer']),
 });
 
 export function registerUserRoutes(app: Express) {
 
   // Middleware para verificar se é admin
-  const requireAdmin = requireRole('admin');
+  const requireAdmin = requireRole(['admin']);
 
   // GET /api/users - Listar todos os usuários (apenas admin)
   app.get('/api/users', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res) => {
@@ -32,10 +31,10 @@ export function registerUserRoutes(app: Express) {
   // POST /api/users - Criar novo usuário (apenas admin)
   app.post('/api/users', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res) => {
   try {
-    const { name, email, role = 'user', status = 'active' } = req.body;
+    const { name, email, role = 'member' } = req.body;
     
     // Validações
-    const validation = userSchema.safeParse({ name, email, role, status });
+    const validation = userSchema.safeParse({ name, email, role });
     if (!validation.success) {
       return res.status(400).json({ error: validation.error.errors[0].message });
     }
@@ -52,13 +51,11 @@ export function registerUserRoutes(app: Express) {
     
     // Inserir usuário
     const newUser = await storage.createUser({
-      id: randomUUID(),
       username: name,
       name,
       email,
       password: hashedPassword,
-      role,
-      createdAt: new Date()
+      role
     });
     
     // Em produção, você enviaria um email com a senha temporária
@@ -79,10 +76,10 @@ export function registerUserRoutes(app: Express) {
   app.put('/api/users/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, email, role, status } = req.body;
+    const { name, email, role } = req.body;
     
     // Validações
-    const validation = userSchema.safeParse({ name, email, role, status });
+    const validation = userSchema.safeParse({ name, email, role });
     if (!validation.success) {
       return res.status(400).json({ error: validation.error.errors[0].message });
     }
@@ -103,8 +100,7 @@ export function registerUserRoutes(app: Express) {
     const updatedUser = await storage.updateUser(id, {
       username: name,
       email,
-      role,
-      status
+      role
     });
     
     res.json({
@@ -129,14 +125,14 @@ export function registerUserRoutes(app: Express) {
     }
     
     // Não permitir excluir o próprio usuário
-    if (parseInt(id) === req.user?.id) {
+    if (id === req.user?.id) {
       return res.status(400).json({ error: 'Não é possível excluir seu próprio usuário' });
     }
     
     // Verificar se não é o último admin
     if (existingUser.role === 'admin') {
       const users = await storage.getUsers();
-      const activeAdmins = users.filter(u => u.role === 'admin' && u.status === 'active');
+      const activeAdmins = users.filter(u => u.role === 'admin');
       if (activeAdmins.length <= 1) {
         return res.status(400).json({ error: 'Não é possível excluir o último administrador ativo' });
       }
@@ -162,7 +158,7 @@ export function registerUserRoutes(app: Express) {
     
     const stats = {
       totalUsers: users.length,
-      activeUsers: users.filter(u => u.status === 'active').length,
+      activeUsers: users.length, // All users are considered active for now
       totalProjects: projects.length,
       totalTasks: tasks.length,
       totalTickets: tickets.length,

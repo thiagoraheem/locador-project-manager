@@ -15,11 +15,17 @@ export interface AuthenticatedRequest extends Request {
 // Middleware para verificar se o usuário está autenticado
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    // Por enquanto, vamos simular um usuário logado
+    // Por enquanto, vamos simular um usuário logado usando o primeiro usuário admin
     // Em uma implementação real, isso viria de uma sessão ou JWT
-    const userId = req.headers['x-user-id'] as string || 'user-1';
+    const userId = req.headers['x-user-id'] as string;
     
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    let user;
+    if (userId) {
+      user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    } else {
+      // Use o primeiro usuário admin disponível como fallback
+      user = await db.select().from(users).where(eq(users.role, 'admin')).limit(1);
+    }
     
     if (!user.length) {
       return res.status(401).json({ error: 'Usuário não encontrado' });
