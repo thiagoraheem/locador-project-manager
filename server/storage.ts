@@ -632,6 +632,28 @@ export class DatabaseStorage implements IStorage {
       .query('DELETE FROM notifications WHERE id = @id');
   }
 
+  // Additional methods needed by routes
+  async getUnreadNotifications(userId: string): Promise<Notification[]> {
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('userId', sql.NVarChar, userId)
+      .query('SELECT * FROM notifications WHERE user_id = @userId AND [read] = 0 ORDER BY created_at DESC');
+    return result.recordset;
+  }
+
+  async checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean> {
+    if (!db) throw new Error('Database not connected');
+    // Simple check to prevent direct circular dependencies
+    const result = await db.request()
+      .input('taskId', sql.NVarChar, taskId)
+      .input('dependsOnTaskId', sql.NVarChar, dependsOnTaskId)
+      .query(`
+        SELECT COUNT(*) as count FROM task_dependencies 
+        WHERE task_id = @dependsOnTaskId AND depends_on_task_id = @taskId
+      `);
+    return result.recordset[0].count > 0;
+  }
+
   // Dashboard stats
   async getDashboardStats(): Promise<{
     activeProjects: number;
@@ -643,7 +665,7 @@ export class DatabaseStorage implements IStorage {
     
     const projectsResult = await db.request().query("SELECT COUNT(*) as count FROM projects WHERE status IN ('planning', 'in_progress')");
     const ticketsResult = await db.request().query("SELECT COUNT(*) as count FROM tickets WHERE status = 'open'");
-    const tasksResult = await db.request().query("SELECT COUNT(*) as count FROM tasks WHERE status = 'done'");
+    const tasksResult = await db.request().query("SELECT COUNT(*) as count FROM tasks WHERE status = 'completed'");
     const usersResult = await db.request().query("SELECT COUNT(*) as count FROM users");
     
     return {
