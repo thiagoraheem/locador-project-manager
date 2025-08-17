@@ -128,7 +128,7 @@ export function ResponsiveTaskList({ tasks, isLoading }: ResponsiveTaskListProps
               <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
                 <div className="flex items-center">
                   <Calendar className="w-3 h-3 mr-1" />
-                  {task.dueDate ? formatDate(task.dueDate.toString()) : 'Sem prazo'}
+                  {task.dueDate ? formatDate(task.dueDate) : 'Sem prazo'}
                 </div>
                 {task.assignedTo && (
                   <div className="flex items-center">
@@ -174,7 +174,7 @@ export function ResponsiveTaskList({ tasks, isLoading }: ResponsiveTaskListProps
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-1" />
-                    <span>{task.dueDate ? formatDate(task.dueDate.toString()) : 'Sem prazo definido'}</span>
+                    <span>{task.dueDate ? formatDate(task.dueDate) : 'Sem prazo definido'}</span>
                   </div>
                   {task.assignedTo && (
                     <div className="flex items-center">
@@ -185,7 +185,7 @@ export function ResponsiveTaskList({ tasks, isLoading }: ResponsiveTaskListProps
                 </div>
                 <div className="flex items-center">
                   <Clock className="w-4 h-4 mr-1" />
-                  <span>Criada em {formatDate(task.createdAt.toString())}</span>
+                  <span>Criada em {formatDate(task.createdAt)}</span>
                 </div>
               </div>
 
