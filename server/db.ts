@@ -11,7 +11,7 @@ const sqlServerConfig: sql.config = {
   password: process.env.DB_PASSWORD!,
   options: {
     encrypt: true,
-    trustServerCertificate: false, // Change to false for production
+    trustServerCertificate: true, // Configured for development environment
     enableArithAbort: true,
   },
   pool: {
@@ -121,7 +121,7 @@ async function createSqlServerTables() {
         user_id NVARCHAR(50) NOT NULL,
         entity_type NVARCHAR(50),
         entity_id NVARCHAR(50),
-        read BIT NOT NULL DEFAULT 0,
+        [read] BIT NOT NULL DEFAULT 0,
         created_at DATETIME2 DEFAULT GETUTCDATE(),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
@@ -247,7 +247,7 @@ function initSqliteDatabase() {
         user_id TEXT NOT NULL,
         entity_type TEXT,
         entity_id TEXT,
-        read INTEGER NOT NULL DEFAULT 0,
+        [read] INTEGER NOT NULL DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
@@ -274,7 +274,7 @@ function initSqliteDatabase() {
     `);
 
     // Insert default admin user if not exists
-    const adminExists = sqlite.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get('admin');
+    const adminExists = sqlite.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get('admin') as { count: number };
     if (adminExists.count === 0) {
       const userId = 'user-' + Math.random().toString(36).substr(2, 9);
       sqlite.prepare(`
