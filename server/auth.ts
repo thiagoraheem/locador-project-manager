@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from './db';
-import { users } from '../shared/schema';
-import { eq } from 'drizzle-orm';
+import sql from 'mssql';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -15,27 +14,35 @@ export interface AuthenticatedRequest extends Request {
 // Middleware para verificar se o usuário está autenticado
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
+    if (!db) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    
     // Por enquanto, vamos simular um usuário logado usando o primeiro usuário admin
     // Em uma implementação real, isso viria de uma sessão ou JWT
     const userId = req.headers['x-user-id'] as string;
     
-    let user;
+    let result;
     if (userId) {
-      user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      result = await db.request()
+        .input('userId', sql.NVarChar, userId)
+        .query('SELECT TOP 1 * FROM users WHERE id = @userId');
     } else {
       // Use o primeiro usuário admin disponível como fallback
-      user = await db.select().from(users).where(eq(users.role, 'admin')).limit(1);
+      result = await db.request()
+        .query("SELECT TOP 1 * FROM users WHERE role = 'admin'");
     }
     
-    if (!user.length) {
+    if (!result.recordset.length) {
       return res.status(401).json({ error: 'Usuário não encontrado' });
     }
     
+    const user = result.recordset[0];
     req.user = {
-      id: user[0].id,
-      username: user[0].username,
-      email: user[0].email,
-      role: user[0].role as 'admin' | 'manager' | 'member' | 'viewer'
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role as 'admin' | 'manager' | 'member' | 'viewer'
     };
     
     next();

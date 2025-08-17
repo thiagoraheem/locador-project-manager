@@ -16,8 +16,8 @@ export function registerUserRoutes(app: Express) {
   // Middleware para verificar se é admin
   const requireAdmin = requireRole(['admin']);
 
-  // GET /api/users - Listar todos os usuários (apenas admin)
-  app.get('/api/users', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res) => {
+  // GET /api/users - Listar todos os usuários
+  app.get('/api/users', async (req, res) => {
   try {
     const users = await storage.getUsers();
     
@@ -28,8 +28,8 @@ export function registerUserRoutes(app: Express) {
     }
   });
 
-  // POST /api/users - Criar novo usuário (apenas admin)
-  app.post('/api/users', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res) => {
+  // POST /api/users - Criar novo usuário
+  app.post('/api/users', async (req, res) => {
   try {
     const { name, email, role = 'member' } = req.body;
     

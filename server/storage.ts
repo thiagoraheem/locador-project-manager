@@ -1,16 +1,103 @@
-import { 
-  users, projects, tickets, tasks, milestones, comments, taskDependencies, notifications,
-  type SelectUser as User, type InsertUser,
-  type SelectProject as Project, type InsertProject,
-  type SelectTicket as Ticket, type InsertTicket,
-  type SelectTask as Task, type InsertTask,
-  type SelectMilestone as Milestone, type InsertMilestone,
-  type SelectComment as Comment, type InsertComment,
-  type SelectTaskDependency as TaskDependency, type InsertTaskDependency,
-  type SelectNotification as Notification, type InsertNotification
-} from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, sql } from "drizzle-orm";
+import sql from 'mssql';
+
+// Type definitions
+export interface User {
+  id: string;
+  username: string;
+  password: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  status: string;
+  startDate: string;
+  endDate?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority: string;
+  projectId: string;
+  assigneeId?: string;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Ticket {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  projectId?: string;
+  reporterId: string;
+  assigneeId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Milestone {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate: string;
+  projectId: string;
+  completed: boolean;
+  createdAt: string;
+}
+
+export interface Comment {
+  id: string;
+  content: string;
+  ticketId: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskDependency {
+  id: string;
+  taskId: string;
+  dependsOnTaskId: string;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  userId: string;
+  entityType?: string;
+  entityId?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+// Insert types
+export type InsertUser = Omit<User, 'id' | 'createdAt'>;
+export type InsertProject = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>;
+export type InsertTask = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
+export type InsertTicket = Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>;
+export type InsertMilestone = Omit<Milestone, 'id' | 'createdAt'>;
+export type InsertComment = Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>;
+export type InsertTaskDependency = Omit<TaskDependency, 'id' | 'createdAt'>;
+export type InsertNotification = Omit<Notification, 'id' | 'createdAt'>;
 
 // Storage interface definition
 export interface IStorage {
@@ -58,17 +145,15 @@ export interface IStorage {
   getTaskDependencies(taskId: string): Promise<TaskDependency[]>;
   createTaskDependency(dependency: InsertTaskDependency): Promise<TaskDependency>;
   deleteTaskDependency(id: string): Promise<void>;
-  checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean>;
   
   // Notifications
   getNotifications(userId: string): Promise<Notification[]>;
-  getUnreadNotifications(userId: string): Promise<Notification[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: string): Promise<void>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   deleteNotification(id: string): Promise<void>;
   
-  // Dashboard Stats
+  // Dashboard stats
   getDashboardStats(): Promise<{
     activeProjects: number;
     openTickets: number;
@@ -80,349 +165,494 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Users
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('SELECT * FROM users WHERE id = @id');
+    return result.recordset[0] || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('username', sql.NVarChar, username)
+      .query('SELECT * FROM users WHERE username = @username');
+    return result.recordset[0] || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
+    if (!db) throw new Error('Database not connected');
+    const id = 'user-' + Math.random().toString(36).substr(2, 9);
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .input('username', sql.NVarChar, insertUser.username)
+      .input('password', sql.NVarChar, insertUser.password)
+      .input('name', sql.NVarChar, insertUser.name)
+      .input('email', sql.NVarChar, insertUser.email)
+      .input('role', sql.NVarChar, insertUser.role)
+      .query(`
+        INSERT INTO users (id, username, password, name, email, role)
+        VALUES (@id, @username, @password, @name, @email, @role);
+        SELECT * FROM users WHERE id = @id;
+      `);
+    return result.recordset[0];
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('email', sql.NVarChar, email)
+      .query('SELECT * FROM users WHERE email = @email');
+    return result.recordset[0] || undefined;
   }
 
   async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
-    const [updatedUser] = await db
-      .update(users)
-      .set(updates)
-      .where(eq(users.id, id))
-      .returning();
-    return updatedUser;
+    if (!db) throw new Error('Database not connected');
+    const updateFields = Object.keys(updates).map(key => `${key} = @${key}`).join(', ');
+    const request = db.request().input('id', sql.NVarChar, id);
+    
+    for (const [key, value] of Object.entries(updates)) {
+      request.input(key, sql.NVarChar, value);
+    }
+    
+    const result = await request.query(`
+      UPDATE users SET ${updateFields} WHERE id = @id;
+      SELECT * FROM users WHERE id = @id;
+    `);
+    return result.recordset[0];
   }
 
   async deleteUser(id: string): Promise<void> {
-    await db.delete(users).where(eq(users.id, id));
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('DELETE FROM users WHERE id = @id');
   }
 
   async getUsers(): Promise<User[]> {
-    return await db.select().from(users);
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request().query('SELECT * FROM users');
+    return result.recordset;
   }
 
   // Projects
   async getProjects(): Promise<Project[]> {
-    return await db.select().from(projects);
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request().query('SELECT * FROM projects ORDER BY created_at DESC');
+    return result.recordset;
   }
 
   async getProject(id: string): Promise<Project | undefined> {
-    const [project] = await db.select().from(projects).where(eq(projects.id, id));
-    return project || undefined;
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('SELECT * FROM projects WHERE id = @id');
+    return result.recordset[0] || undefined;
   }
 
-  async createProject(project: InsertProject): Promise<Project> {
-    // Generate a simple UUID for SQLite compatibility
-    const id = 'proj_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    const projectWithId = {
-      ...project,
-      id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    const [newProject] = await db
-      .insert(projects)
-      .values(projectWithId)
-      .returning();
-    return newProject;
+  async createProject(insertProject: InsertProject): Promise<Project> {
+    if (!db) throw new Error('Database not connected');
+    const id = 'proj_' + Math.random().toString(36).substr(2, 15);
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .input('name', sql.NVarChar, insertProject.name)
+      .input('description', sql.NVarChar, insertProject.description || null)
+      .input('status', sql.NVarChar, insertProject.status)
+      .input('startDate', sql.DateTime2, new Date(insertProject.startDate))
+      .input('endDate', sql.DateTime2, insertProject.endDate ? new Date(insertProject.endDate) : null)
+      .input('createdBy', sql.NVarChar, insertProject.createdBy)
+      .query(`
+        INSERT INTO projects (id, name, description, status, start_date, end_date, created_by)
+        VALUES (@id, @name, @description, @status, @startDate, @endDate, @createdBy);
+        SELECT * FROM projects WHERE id = @id;
+      `);
+    return result.recordset[0];
   }
 
   async updateProject(id: string, updates: Partial<InsertProject>): Promise<Project> {
-    const [updatedProject] = await db
-      .update(projects)
-      .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(eq(projects.id, id))
-      .returning();
-    return updatedProject;
+    if (!db) throw new Error('Database not connected');
+    const updateFields = [];
+    const request = db.request().input('id', sql.NVarChar, id);
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (key === 'startDate' || key === 'endDate') {
+        updateFields.push(`${key === 'startDate' ? 'start_date' : 'end_date'} = @${key}`);
+        request.input(key, sql.DateTime2, value ? new Date(value) : null);
+      } else {
+        updateFields.push(`${key} = @${key}`);
+        request.input(key, sql.NVarChar, value);
+      }
+    }
+    
+    if (updateFields.length > 0) {
+      updateFields.push('updated_at = GETUTCDATE()');
+      const result = await request.query(`
+        UPDATE projects SET ${updateFields.join(', ')} WHERE id = @id;
+        SELECT * FROM projects WHERE id = @id;
+      `);
+      return result.recordset[0];
+    }
+    
+    const result = await request.query('SELECT * FROM projects WHERE id = @id');
+    return result.recordset[0];
   }
 
   async deleteProject(id: string): Promise<void> {
-    await db.delete(projects).where(eq(projects.id, id));
-  }
-
-  // Tickets
-  async getTickets(projectId?: string): Promise<Ticket[]> {
-    if (projectId) {
-      return await db.select().from(tickets).where(eq(tickets.projectId, projectId));
-    }
-    return await db.select().from(tickets);
-  }
-
-  async getTicket(id: string): Promise<Ticket | undefined> {
-    const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
-    return ticket || undefined;
-  }
-
-  async createTicket(ticket: InsertTicket): Promise<Ticket> {
-    // Generate a simple UUID for SQLite compatibility
-    const id = 'tick_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    const ticketWithId = {
-      ...ticket,
-      id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    const [newTicket] = await db
-      .insert(tickets)
-      .values(ticketWithId)
-      .returning();
-    return newTicket;
-  }
-
-  async updateTicket(id: string, updates: Partial<InsertTicket>): Promise<Ticket> {
-    const [updatedTicket] = await db
-      .update(tickets)
-      .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(eq(tickets.id, id))
-      .returning();
-    return updatedTicket;
-  }
-
-  async deleteTicket(id: string): Promise<void> {
-    await db.delete(tickets).where(eq(tickets.id, id));
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('DELETE FROM projects WHERE id = @id');
   }
 
   // Tasks
   async getTasks(projectId?: string): Promise<Task[]> {
+    if (!db) throw new Error('Database not connected');
+    let query = 'SELECT * FROM tasks';
+    const request = db.request();
+    
     if (projectId) {
-      return await db.select().from(tasks).where(eq(tasks.projectId, projectId));
+      query += ' WHERE project_id = @projectId';
+      request.input('projectId', sql.NVarChar, projectId);
     }
-    return await db.select().from(tasks);
+    
+    query += ' ORDER BY created_at DESC';
+    const result = await request.query(query);
+    return result.recordset;
   }
 
   async getTask(id: string): Promise<Task | undefined> {
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
-    return task || undefined;
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('SELECT * FROM tasks WHERE id = @id');
+    return result.recordset[0] || undefined;
   }
 
-  async createTask(task: InsertTask): Promise<Task> {
-    // Generate a simple UUID for SQLite compatibility
-    const id = 'task_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    const taskWithId = {
-      ...task,
-      id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    const [newTask] = await db
-      .insert(tasks)
-      .values(taskWithId)
-      .returning();
-    return newTask;
+  async createTask(insertTask: InsertTask): Promise<Task> {
+    if (!db) throw new Error('Database not connected');
+    const id = 'task_' + Math.random().toString(36).substr(2, 15);
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .input('title', sql.NVarChar, insertTask.title)
+      .input('description', sql.NVarChar, insertTask.description || null)
+      .input('status', sql.NVarChar, insertTask.status)
+      .input('priority', sql.NVarChar, insertTask.priority)
+      .input('projectId', sql.NVarChar, insertTask.projectId)
+      .input('assigneeId', sql.NVarChar, insertTask.assigneeId || null)
+      .input('startDate', sql.DateTime2, insertTask.startDate ? new Date(insertTask.startDate) : null)
+      .input('endDate', sql.DateTime2, insertTask.endDate ? new Date(insertTask.endDate) : null)
+      .query(`
+        INSERT INTO tasks (id, title, description, status, priority, project_id, assignee_id, start_date, end_date)
+        VALUES (@id, @title, @description, @status, @priority, @projectId, @assigneeId, @startDate, @endDate);
+        SELECT * FROM tasks WHERE id = @id;
+      `);
+    return result.recordset[0];
   }
 
   async updateTask(id: string, updates: Partial<InsertTask>): Promise<Task> {
-    const [updatedTask] = await db
-      .update(tasks)
-      .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(eq(tasks.id, id))
-      .returning();
-    return updatedTask;
+    if (!db) throw new Error('Database not connected');
+    const updateFields = [];
+    const request = db.request().input('id', sql.NVarChar, id);
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (key === 'startDate' || key === 'endDate') {
+        updateFields.push(`${key === 'startDate' ? 'start_date' : 'end_date'} = @${key}`);
+        request.input(key, sql.DateTime2, value ? new Date(value) : null);
+      } else if (key === 'projectId') {
+        updateFields.push('project_id = @projectId');
+        request.input('projectId', sql.NVarChar, value);
+      } else if (key === 'assigneeId') {
+        updateFields.push('assignee_id = @assigneeId');
+        request.input('assigneeId', sql.NVarChar, value);
+      } else {
+        updateFields.push(`${key} = @${key}`);
+        request.input(key, sql.NVarChar, value);
+      }
+    }
+    
+    if (updateFields.length > 0) {
+      updateFields.push('updated_at = GETUTCDATE()');
+      const result = await request.query(`
+        UPDATE tasks SET ${updateFields.join(', ')} WHERE id = @id;
+        SELECT * FROM tasks WHERE id = @id;
+      `);
+      return result.recordset[0];
+    }
+    
+    const result = await request.query('SELECT * FROM tasks WHERE id = @id');
+    return result.recordset[0];
   }
 
   async deleteTask(id: string): Promise<void> {
-    await db.delete(tasks).where(eq(tasks.id, id));
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('DELETE FROM tasks WHERE id = @id');
+  }
+
+  // Tickets
+  async getTickets(projectId?: string): Promise<Ticket[]> {
+    if (!db) throw new Error('Database not connected');
+    let query = 'SELECT * FROM tickets';
+    const request = db.request();
+    
+    if (projectId) {
+      query += ' WHERE project_id = @projectId';
+      request.input('projectId', sql.NVarChar, projectId);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    const result = await request.query(query);
+    return result.recordset;
+  }
+
+  async getTicket(id: string): Promise<Ticket | undefined> {
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('SELECT * FROM tickets WHERE id = @id');
+    return result.recordset[0] || undefined;
+  }
+
+  async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
+    if (!db) throw new Error('Database not connected');
+    const id = 'ticket_' + Math.random().toString(36).substr(2, 15);
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .input('title', sql.NVarChar, insertTicket.title)
+      .input('description', sql.NVarChar, insertTicket.description)
+      .input('priority', sql.NVarChar, insertTicket.priority)
+      .input('status', sql.NVarChar, insertTicket.status)
+      .input('projectId', sql.NVarChar, insertTicket.projectId || null)
+      .input('reporterId', sql.NVarChar, insertTicket.reporterId)
+      .input('assigneeId', sql.NVarChar, insertTicket.assigneeId || null)
+      .query(`
+        INSERT INTO tickets (id, title, description, priority, status, project_id, reporter_id, assignee_id)
+        VALUES (@id, @title, @description, @priority, @status, @projectId, @reporterId, @assigneeId);
+        SELECT * FROM tickets WHERE id = @id;
+      `);
+    return result.recordset[0];
+  }
+
+  async updateTicket(id: string, updates: Partial<InsertTicket>): Promise<Ticket> {
+    if (!db) throw new Error('Database not connected');
+    const updateFields = [];
+    const request = db.request().input('id', sql.NVarChar, id);
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (key === 'projectId') {
+        updateFields.push('project_id = @projectId');
+        request.input('projectId', sql.NVarChar, value);
+      } else if (key === 'reporterId') {
+        updateFields.push('reporter_id = @reporterId');
+        request.input('reporterId', sql.NVarChar, value);
+      } else if (key === 'assigneeId') {
+        updateFields.push('assignee_id = @assigneeId');
+        request.input('assigneeId', sql.NVarChar, value);
+      } else {
+        updateFields.push(`${key} = @${key}`);
+        request.input(key, sql.NVarChar, value);
+      }
+    }
+    
+    if (updateFields.length > 0) {
+      updateFields.push('updated_at = GETUTCDATE()');
+      const result = await request.query(`
+        UPDATE tickets SET ${updateFields.join(', ')} WHERE id = @id;
+        SELECT * FROM tickets WHERE id = @id;
+      `);
+      return result.recordset[0];
+    }
+    
+    const result = await request.query('SELECT * FROM tickets WHERE id = @id');
+    return result.recordset[0];
+  }
+
+  async deleteTicket(id: string): Promise<void> {
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('DELETE FROM tickets WHERE id = @id');
   }
 
   // Milestones
   async getMilestones(projectId?: string): Promise<Milestone[]> {
-    if (projectId) {
-      return await db.select().from(milestones).where(eq(milestones.projectId, projectId));
-    }
-    return await db.select().from(milestones);
+    if (!db) throw new Error('Database not connected');
+    // Note: Milestones table doesn't exist in current schema, returning empty array
+    return [];
   }
 
   async createMilestone(milestone: InsertMilestone): Promise<Milestone> {
-    // Generate a simple UUID for SQLite compatibility
-    const id = 'mile_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    const milestoneWithId = {
-      ...milestone,
-      id,
-      createdAt: new Date().toISOString()
-    };
-    
-    const [newMilestone] = await db
-      .insert(milestones)
-      .values(milestoneWithId)
-      .returning();
-    return newMilestone;
-  }
-
-  // Dashboard Stats
-  async getDashboardStats() {
-    const [activeProjectsResult] = await db
-      .select({ count: count() })
-      .from(projects)
-      .where(sql`${projects.status} IN ('planning', 'in_progress', 'review')`);
-    
-    const [openTicketsResult] = await db
-      .select({ count: count() })
-      .from(tickets)
-      .where(eq(tickets.status, 'open'));
-    
-    const [completedTasksResult] = await db
-      .select({ count: count() })
-      .from(tasks)
-      .where(eq(tasks.status, 'completed'));
-    
-    const [teamMembersResult] = await db
-      .select({ count: count() })
-      .from(users);
-
-    return {
-      activeProjects: activeProjectsResult.count,
-      openTickets: openTicketsResult.count,
-      completedTasks: completedTasksResult.count,
-      teamMembers: teamMembersResult.count,
-    };
+    if (!db) throw new Error('Database not connected');
+    // Note: Milestones table doesn't exist in current schema, throwing error
+    throw new Error('Milestones not implemented');
   }
 
   // Comments
   async getComments(ticketId: string): Promise<Comment[]> {
-    return await db.select().from(comments).where(eq(comments.ticketId, ticketId));
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('ticketId', sql.NVarChar, ticketId)
+      .query('SELECT * FROM comments WHERE ticket_id = @ticketId ORDER BY created_at ASC');
+    return result.recordset;
   }
 
-  async createComment(comment: InsertComment): Promise<Comment> {
-    // Generate a simple UUID for SQLite compatibility
-    const id = 'comm_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    const commentWithId = {
-      ...comment,
-      id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    const [newComment] = await db
-      .insert(comments)
-      .values(commentWithId)
-      .returning();
-    return newComment;
+  async createComment(insertComment: InsertComment): Promise<Comment> {
+    if (!db) throw new Error('Database not connected');
+    const id = 'comment_' + Math.random().toString(36).substr(2, 15);
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .input('content', sql.NVarChar, insertComment.content)
+      .input('ticketId', sql.NVarChar, insertComment.ticketId)
+      .input('authorId', sql.NVarChar, insertComment.authorId)
+      .query(`
+        INSERT INTO comments (id, content, ticket_id, author_id)
+        VALUES (@id, @content, @ticketId, @authorId);
+        SELECT * FROM comments WHERE id = @id;
+      `);
+    return result.recordset[0];
   }
 
   async updateComment(id: string, updates: Partial<InsertComment>): Promise<Comment> {
-    const [updatedComment] = await db
-      .update(comments)
-      .set({ ...updates, updatedAt: new Date().toISOString() })
-      .where(eq(comments.id, id))
-      .returning();
-    return updatedComment;
+    if (!db) throw new Error('Database not connected');
+    const updateFields = [];
+    const request = db.request().input('id', sql.NVarChar, id);
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (key === 'ticketId') {
+        updateFields.push('ticket_id = @ticketId');
+        request.input('ticketId', sql.NVarChar, value);
+      } else if (key === 'authorId') {
+        updateFields.push('author_id = @authorId');
+        request.input('authorId', sql.NVarChar, value);
+      } else {
+        updateFields.push(`${key} = @${key}`);
+        request.input(key, sql.NVarChar, value);
+      }
+    }
+    
+    if (updateFields.length > 0) {
+      updateFields.push('updated_at = GETUTCDATE()');
+      const result = await request.query(`
+        UPDATE comments SET ${updateFields.join(', ')} WHERE id = @id;
+        SELECT * FROM comments WHERE id = @id;
+      `);
+      return result.recordset[0];
+    }
+    
+    const result = await request.query('SELECT * FROM comments WHERE id = @id');
+    return result.recordset[0];
   }
 
   async deleteComment(id: string): Promise<void> {
-    await db.delete(comments).where(eq(comments.id, id));
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('DELETE FROM comments WHERE id = @id');
   }
 
   // Task Dependencies
   async getTaskDependencies(taskId: string): Promise<TaskDependency[]> {
-    return await db.select().from(taskDependencies).where(eq(taskDependencies.taskId, taskId));
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('taskId', sql.NVarChar, taskId)
+      .query('SELECT * FROM task_dependencies WHERE task_id = @taskId');
+    return result.recordset;
   }
 
   async createTaskDependency(dependency: InsertTaskDependency): Promise<TaskDependency> {
-    // Generate a simple UUID for SQLite compatibility
-    const id = 'dep_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    const dependencyWithId = {
-      ...dependency,
-      id,
-      createdAt: new Date().toISOString()
-    };
-    
-    const [newDependency] = await db
-      .insert(taskDependencies)
-      .values(dependencyWithId)
-      .returning();
-    return newDependency;
+    if (!db) throw new Error('Database not connected');
+    const id = 'dep_' + Math.random().toString(36).substr(2, 15);
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .input('taskId', sql.NVarChar, dependency.taskId)
+      .input('dependsOnTaskId', sql.NVarChar, dependency.dependsOnTaskId)
+      .query(`
+        INSERT INTO task_dependencies (id, task_id, depends_on_task_id)
+        VALUES (@id, @taskId, @dependsOnTaskId);
+        SELECT * FROM task_dependencies WHERE id = @id;
+      `);
+    return result.recordset[0];
   }
 
   async deleteTaskDependency(id: string): Promise<void> {
-    await db.delete(taskDependencies).where(eq(taskDependencies.id, id));
-  }
-
-  async checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean> {
-    // Simple check - for a full implementation, we'd need recursive checking
-    const existingDependency = await db
-      .select()
-      .from(taskDependencies)
-      .where(
-        and(
-          eq(taskDependencies.taskId, dependsOnTaskId),
-          eq(taskDependencies.dependsOnTaskId, taskId)
-        )
-      );
-    return existingDependency.length > 0;
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('DELETE FROM task_dependencies WHERE id = @id');
   }
 
   // Notifications
   async getNotifications(userId: string): Promise<Notification[]> {
-    return await db.select().from(notifications).where(eq(notifications.userId, userId));
-  }
-
-  async getUnreadNotifications(userId: string): Promise<Notification[]> {
-    return await db
-      .select()
-      .from(notifications)
-      .where(
-        and(
-          eq(notifications.userId, userId),
-          eq(notifications.read, false)
-        )
-      );
+    if (!db) throw new Error('Database not connected');
+    const result = await db.request()
+      .input('userId', sql.NVarChar, userId)
+      .query('SELECT * FROM notifications WHERE user_id = @userId ORDER BY created_at DESC');
+    return result.recordset;
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {
-    // Generate a simple UUID for SQLite compatibility
-    const id = 'notif_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    const notificationWithId = {
-      ...notification,
-      id,
-      createdAt: new Date().toISOString()
-    };
-    
-    const [newNotification] = await db
-      .insert(notifications)
-      .values(notificationWithId)
-      .returning();
-    return newNotification;
+    if (!db) throw new Error('Database not connected');
+    const id = 'notif_' + Math.random().toString(36).substr(2, 15);
+    const result = await db.request()
+      .input('id', sql.NVarChar, id)
+      .input('type', sql.NVarChar, notification.type)
+      .input('title', sql.NVarChar, notification.title)
+      .input('message', sql.NVarChar, notification.message)
+      .input('userId', sql.NVarChar, notification.userId)
+      .input('entityType', sql.NVarChar, notification.entityType || null)
+      .input('entityId', sql.NVarChar, notification.entityId || null)
+      .input('read', sql.Bit, notification.read)
+      .query(`
+        INSERT INTO notifications (id, type, title, message, user_id, entity_type, entity_id, [read])
+        VALUES (@id, @type, @title, @message, @userId, @entityType, @entityId, @read);
+        SELECT * FROM notifications WHERE id = @id;
+      `);
+    return result.recordset[0];
   }
 
   async markNotificationAsRead(id: string): Promise<void> {
-    await db
-      .update(notifications)
-      .set({ read: true })
-      .where(eq(notifications.id, id));
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('UPDATE notifications SET [read] = 1 WHERE id = @id');
   }
 
   async markAllNotificationsAsRead(userId: string): Promise<void> {
-    await db
-      .update(notifications)
-      .set({ read: true })
-      .where(eq(notifications.userId, userId));
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('userId', sql.NVarChar, userId)
+      .query('UPDATE notifications SET [read] = 1 WHERE user_id = @userId');
   }
 
   async deleteNotification(id: string): Promise<void> {
-    await db.delete(notifications).where(eq(notifications.id, id));
+    if (!db) throw new Error('Database not connected');
+    await db.request()
+      .input('id', sql.NVarChar, id)
+      .query('DELETE FROM notifications WHERE id = @id');
+  }
+
+  // Dashboard stats
+  async getDashboardStats(): Promise<{
+    activeProjects: number;
+    openTickets: number;
+    completedTasks: number;
+    teamMembers: number;
+  }> {
+    if (!db) throw new Error('Database not connected');
+    
+    const projectsResult = await db.request().query("SELECT COUNT(*) as count FROM projects WHERE status IN ('planning', 'in_progress')");
+    const ticketsResult = await db.request().query("SELECT COUNT(*) as count FROM tickets WHERE status = 'open'");
+    const tasksResult = await db.request().query("SELECT COUNT(*) as count FROM tasks WHERE status = 'done'");
+    const usersResult = await db.request().query("SELECT COUNT(*) as count FROM users");
+    
+    return {
+      activeProjects: projectsResult.recordset[0].count,
+      openTickets: ticketsResult.recordset[0].count,
+      completedTasks: tasksResult.recordset[0].count,
+      teamMembers: usersResult.recordset[0].count,
+    };
   }
 }
 
-// Export storage instance
 export const storage = new DatabaseStorage();
