@@ -93,8 +93,8 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
       priority: task.priority,
       startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : "",
       endDate: task.endDate ? new Date(task.endDate).toISOString().split('T')[0] : "",
-      projectId: task.projectId || "",
-      assigneeId: task.assigneeId || "",
+      projectId: task.projectId || "none",
+      assigneeId: task.assigneeId || "none",
     },
   });
 
@@ -128,8 +128,8 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
         ...data,
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null,
-        projectId: data.projectId || null,
-        assigneeId: data.assigneeId || null,
+        projectId: data.projectId === "none" ? null : data.projectId,
+        assigneeId: data.assigneeId === "none" ? null : data.assigneeId,
       };
 
       const response = await fetch(`/api/tasks/${task.id}`, {
@@ -178,8 +178,8 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
         priority: task.priority,
         startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : "",
         endDate: task.endDate ? new Date(task.endDate).toISOString().split('T')[0] : "",
-        projectId: task.projectId || "",
-        assigneeId: task.assigneeId || "",
+        projectId: task.projectId || "none",
+        assigneeId: task.assigneeId || "none",
       });
     }
   }, [task, form]);
@@ -326,7 +326,7 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhum projeto</SelectItem>
+                        <SelectItem value="none">Nenhum projeto</SelectItem>
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
@@ -355,7 +355,7 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhum responsável</SelectItem>
+                        <SelectItem value="none">Nenhum responsável</SelectItem>
                         {users.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.name}
