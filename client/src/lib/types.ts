@@ -3,6 +3,10 @@ export interface DashboardStats {
   openTickets: number;
   completedTasks: number;
   teamMembers: number;
+  totalProjects: number;
+  totalTasks: number;
+  projectProgress: Array<{status: string; count: number}>;
+  recentActivity: Array<{type: string; message: string; timestamp: string}>;
 }
 
 export type ProjectStatus = 'planning' | 'in_progress' | 'review' | 'completed' | 'on_hold';

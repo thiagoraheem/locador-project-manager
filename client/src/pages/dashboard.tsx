@@ -25,7 +25,10 @@ import {
   Activity
 } from "lucide-react";
 import type { DashboardStats } from "@/lib/types";
-import type { Project, Ticket as TicketType } from "@shared/schema";
+import type { projects, tickets } from "@shared/schema";
+
+type Project = typeof projects.$inferSelect;
+type TicketType = typeof tickets.$inferSelect;
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
@@ -38,6 +41,14 @@ export default function Dashboard() {
 
   const { data: tickets = [], isLoading: ticketsLoading } = useQuery<TicketType[]>({
     queryKey: ["/api/tickets"],
+  });
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["/api/tasks"],
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
   });
 
   const { analyticsData, widgets, toggleWidget, configureWidget, isLoading: analyticsLoading } = useDashboardAnalytics();
@@ -82,10 +93,45 @@ export default function Dashboard() {
     return `${Math.floor(diffHours / 24)}d atrás`;
   };
 
+  // Calculate real progress percentages
+  const calculateProgressData = () => {
+    if (!stats?.projectProgress) return [];
+    
+    const statusLabels = {
+      'planning': 'Planejamento',
+      'in_progress': 'Em Progresso', 
+      'review': 'Em Revisão',
+      'completed': 'Concluídos',
+      'on_hold': 'Em Espera'
+    };
+    
+    const total = stats.projectProgress.reduce((sum: number, item: any) => sum + item.count, 0);
+    
+    return stats.projectProgress.map((item: any) => ({
+      name: statusLabels[item.status as keyof typeof statusLabels] || item.status,
+      value: item.count,
+      percentage: total > 0 ? Math.round((item.count / total) * 100) : 0
+    }));
+  };
+
+  // Calculate completion rate
+  const completionRate = () => {
+    const total = stats?.totalTasks || 0;
+    const completed = stats?.completedTasks || 0;
+    return total > 0 ? Math.round((completed / total) * 100) : 0;
+  };
+
+  // Calculate team productivity (tasks per team member)
+  const teamProductivity = () => {
+    const totalTasks = stats?.totalTasks || 0;
+    const teamSize = stats?.teamMembers || 1;
+    return Math.round((totalTasks / teamSize) * 10) / 10;
+  };
+
   const renderDashboard = () => (
     <>
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -101,8 +147,8 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center mt-4 text-sm">
               <ArrowUp className="text-success mr-1 w-4 h-4" />
-              <span className="text-success">+8%</span>
-              <span className="text-gray-500 ml-2">vs último mês</span>
+              <span className="text-success">+{Math.round(((stats?.activeProjects || 0) / Math.max(stats?.totalProjects || 1, 1)) * 100)}%</span>
+              <span className="text-gray-500 ml-2">dos projetos totais</span>
             </div>
           </CardContent>
         </Card>
@@ -122,8 +168,8 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center mt-4 text-sm">
               <ArrowUp className="text-success mr-1 w-4 h-4" />
-              <span className="text-success">+12%</span>
-              <span className="text-gray-500 ml-2">vs última semana</span>
+              <span className="text-success">{stats?.openTickets || 0}</span>
+              <span className="text-gray-500 ml-2">chamados ativos</span>
             </div>
           </CardContent>
         </Card>
@@ -143,8 +189,8 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center mt-4 text-sm">
               <ArrowUp className="text-success mr-1 w-4 h-4" />
-              <span className="text-success">+24%</span>
-              <span className="text-gray-500 ml-2">vs último mês</span>
+              <span className="text-success">{completionRate()}%</span>
+              <span className="text-gray-500 ml-2">taxa de conclusão</span>
             </div>
           </CardContent>
         </Card>
@@ -164,12 +210,12 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center mt-4 text-sm">
               <ArrowUp className="text-success mr-1 w-4 h-4" />
-              <span className="text-success">+3</span>
-              <span className="text-gray-500 ml-2">novos este mês</span>
+              <span className="text-success">{teamProductivity()}</span>
+              <span className="text-gray-500 ml-2">tarefas por membro</span>
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
 
       {/* Analytics Tabs */}
       <Tabs defaultValue="overview" className="space-y-4 mb-8">
@@ -197,15 +243,15 @@ export default function Dashboard() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Taxa de Conclusão</span>
-                    <span className="text-lg font-semibold text-text">87%</span>
+                    <span className="text-lg font-semibold text-text">{completionRate()}%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Tempo Médio de Resolução</span>
-                    <span className="text-lg font-semibold text-text">2.3 dias</span>
+                    <span className="text-sm text-gray-500">Produtividade da Equipe</span>
+                    <span className="text-lg font-semibold text-text">{teamProductivity()} tarefas/membro</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Satisfação do Cliente</span>
-                    <span className="text-lg font-semibold text-text">4.8/5</span>
+                    <span className="text-sm text-gray-500">Projetos Ativos</span>
+                    <span className="text-lg font-semibold text-text">{Math.round(((stats?.activeProjects || 0) / Math.max(stats?.totalProjects || 1, 1)) * 100)}%</span>
                   </div>
                 </div>
               </CardContent>
@@ -220,15 +266,15 @@ export default function Dashboard() {
                   <div className="flex items-center space-x-3">
                     <TrendingUp className="text-success w-5 h-5" />
                     <div>
-                      <p className="text-sm font-medium text-text">Produtividade</p>
-                      <p className="text-xs text-gray-500">+15% este mês</p>
+                      <p className="text-sm font-medium text-text">Tarefas Concluídas</p>
+                      <p className="text-xs text-gray-500">{stats?.completedTasks || 0} no total</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Activity className="text-primary w-5 h-5" />
                     <div>
-                      <p className="text-sm font-medium text-text">Atividade da Equipe</p>
-                      <p className="text-xs text-gray-500">+8% esta semana</p>
+                      <p className="text-sm font-medium text-text">Projetos Totais</p>
+                      <p className="text-xs text-gray-500">{stats?.totalProjects || 0} criados</p>
                     </div>
                   </div>
                 </div>
@@ -242,7 +288,6 @@ export default function Dashboard() {
             widgets={widgets}
             onToggleWidget={toggleWidget}
             onConfigureWidget={configureWidget}
-            isLoading={analyticsLoading}
           />
         </TabsContent>
       </Tabs>

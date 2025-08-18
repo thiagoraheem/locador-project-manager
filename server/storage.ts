@@ -660,19 +660,61 @@ export class DatabaseStorage implements IStorage {
     openTickets: number;
     completedTasks: number;
     teamMembers: number;
+    totalProjects: number;
+    totalTasks: number;
+    projectProgress: Array<{status: string; count: number}>;
+    recentActivity: Array<{type: string; message: string; timestamp: string}>;
   }> {
     if (!db) throw new Error('Database not connected');
     
-    const projectsResult = await db.request().query("SELECT COUNT(*) as count FROM projects WHERE status IN ('planning', 'in_progress')");
-    const ticketsResult = await db.request().query("SELECT COUNT(*) as count FROM tickets WHERE status = 'open'");
-    const tasksResult = await db.request().query("SELECT COUNT(*) as count FROM tasks WHERE status = 'completed'");
+    const activeProjectsResult = await db.request().query("SELECT COUNT(*) as count FROM projects WHERE status IN ('planning', 'in_progress')");
+    const openTicketsResult = await db.request().query("SELECT COUNT(*) as count FROM tickets WHERE status IN ('open', 'in_progress')");
+    const completedTasksResult = await db.request().query("SELECT COUNT(*) as count FROM tasks WHERE status = 'completed'");
     const usersResult = await db.request().query("SELECT COUNT(*) as count FROM users");
+    const totalProjectsResult = await db.request().query("SELECT COUNT(*) as count FROM projects");
+    const totalTasksResult = await db.request().query("SELECT COUNT(*) as count FROM tasks");
+    
+    // Get project status distribution for progress chart
+    const projectProgressResult = await db.request().query(`
+      SELECT status, COUNT(*) as count 
+      FROM projects 
+      GROUP BY status
+    `);
+    
+    // Get recent activity (simplified version)
+    const recentProjectsResult = await db.request().query(`
+      SELECT TOP 3 name, createdAt, 'projeto' as type 
+      FROM projects 
+      ORDER BY createdAt DESC
+    `);
+    const recentTasksResult = await db.request().query(`
+      SELECT TOP 3 title, createdAt, 'tarefa' as type 
+      FROM tasks 
+      ORDER BY createdAt DESC
+    `);
+    
+    const recentActivity = [
+      ...recentProjectsResult.recordset.map((item: any) => ({
+        type: item.type,
+        message: `Projeto "${item.name}" foi criado`,
+        timestamp: item.createdAt
+      })),
+      ...recentTasksResult.recordset.map((item: any) => ({
+        type: item.type,
+        message: `Tarefa "${item.title}" foi criada`,
+        timestamp: item.createdAt
+      }))
+    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
     
     return {
-      activeProjects: projectsResult.recordset[0].count,
-      openTickets: ticketsResult.recordset[0].count,
-      completedTasks: tasksResult.recordset[0].count,
+      activeProjects: activeProjectsResult.recordset[0].count,
+      openTickets: openTicketsResult.recordset[0].count,
+      completedTasks: completedTasksResult.recordset[0].count,
       teamMembers: usersResult.recordset[0].count,
+      totalProjects: totalProjectsResult.recordset[0].count,
+      totalTasks: totalTasksResult.recordset[0].count,
+      projectProgress: projectProgressResult.recordset || [],
+      recentActivity: recentActivity
     };
   }
 }
