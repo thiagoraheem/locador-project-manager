@@ -1,5 +1,4 @@
 import sql from "mssql";
-import { useReplitIP } from "../shared/useReplitIP";
 
 // SQL Server configuration
 const sqlServerConfig: sql.config = {
@@ -37,13 +36,15 @@ async function initSqlServer() {
   }
 
   try {
-    const { data: ipData, isLoading: ipLoading } = useReplitIP();
-    const ip =
-      ipData?.externalIP ||
-      (ipData?.localIPs && ipData.localIPs.length > 0
-        ? ipData.localIPs[0].ip
+    // Buscar IPs do servidor usando função utilitária
+    const { getServerIPs } = await import("./ip-utils");
+    const ipData = await getServerIPs();
+    const ip = ipData?.externalIP || 
+      (ipData?.localIPs && ipData.localIPs.length > 0 
+        ? ipData.localIPs[0].ip 
         : "Não disponível");
     console.log(`Replit IP: ${ip}`);
+    console.log(`IPs locais encontrados:`, ipData.localIPs);
   } catch (error) {
     console.error("Failed to fetch Replit IP:", error);
   }
