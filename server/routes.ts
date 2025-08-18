@@ -11,7 +11,6 @@ import {
   insertNotificationSchema,
 } from "@shared/schema";
 import { z } from "zod";
-import checkIpRouter from "./check-ip";
 import {
   requireAuth,
   requireRole,
@@ -30,9 +29,6 @@ import {
 import { registerUserRoutes } from "./routes/users";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Registrar o router de check-ip
-  app.use("/api", checkIpRouter);
-
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
@@ -695,12 +691,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const result = insertCommentSchema.safeParse(req.body);
         if (!result.success) {
-          return res
-            .status(400)
-            .json({
-              message: "Invalid comment data",
-              errors: result.error.errors,
-            });
+          return res.status(400).json({
+            message: "Invalid comment data",
+            errors: result.error.errors,
+          });
         }
 
         const comment = await storage.createComment(result.data);
@@ -755,12 +749,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const result = insertTaskDependencySchema.safeParse(req.body);
         if (!result.success) {
-          return res
-            .status(400)
-            .json({
-              message: "Invalid dependency data",
-              errors: result.error.errors,
-            });
+          return res.status(400).json({
+            message: "Invalid dependency data",
+            errors: result.error.errors,
+          });
         }
 
         const isCircular = await storage.checkCircularDependency(
@@ -813,12 +805,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const result = insertMilestoneSchema.safeParse(req.body);
         if (!result.success) {
-          return res
-            .status(400)
-            .json({
-              message: "Invalid milestone data",
-              errors: result.error.errors,
-            });
+          return res.status(400).json({
+            message: "Invalid milestone data",
+            errors: result.error.errors,
+          });
         }
 
         const milestone = await storage.createMilestone(result.data);
