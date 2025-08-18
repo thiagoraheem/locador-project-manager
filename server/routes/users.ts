@@ -8,7 +8,7 @@ import { storage } from '../storage';
 const userSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  role: z.enum(['admin', 'manager', 'member', 'viewer']),
+  role: z.enum(['admin', 'manager', 'member', 'viewer', 'user']),
 });
 
 export function registerUserRoutes(app: Express) {

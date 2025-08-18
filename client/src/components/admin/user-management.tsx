@@ -21,7 +21,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager' | 'user';
+  role: 'admin' | 'manager' | 'member'; // Alterado para 'member'
   status: 'active' | 'inactive';
   createdAt: string;
   lastLogin?: string;
@@ -30,7 +30,7 @@ interface User {
 const userSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  role: z.enum(['admin', 'manager', 'user']),
+  role: z.enum(['admin', 'manager', 'member']), // Alterado para 'member'
   status: z.enum(['active', 'inactive'])
 });
 
@@ -40,7 +40,7 @@ const getRoleLabel = (role: string) => {
   switch (role) {
     case 'admin': return 'Administrador';
     case 'manager': return 'Gerente';
-    case 'user': return 'Usuário';
+    case 'member': return 'Membro'; // Alterado para 'Membro'
     default: return role;
   }
 };
@@ -49,7 +49,7 @@ const getRoleBadgeVariant = (role: string) => {
   switch (role) {
     case 'admin': return 'destructive';
     case 'manager': return 'default';
-    case 'user': return 'secondary';
+    case 'member': return 'secondary'; // Alterado para 'secondary'
     default: return 'outline';
   }
 };
@@ -70,7 +70,7 @@ export default function UserManagement() {
     defaultValues: {
       name: '',
       email: '',
-      role: 'user',
+      role: 'member', // Alterado para 'member'
       status: 'active'
     }
   });
@@ -88,12 +88,23 @@ export default function UserManagement() {
   // Criar usuário
   const createUserMutation = useMutation({
     mutationFn: async (userData: UserFormData) => {
+      // Mapear 'user' para 'member' para compatibilidade com o backend
+      const mappedData = {
+        ...userData,
+        role: userData.role === 'user' ? 'member' : userData.role
+      };
+
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(mappedData),
       });
-      if (!response.ok) throw new Error('Failed to create user');
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create user');
+      }
+
       return response.json();
     },
     onSuccess: () => {
@@ -117,12 +128,23 @@ export default function UserManagement() {
   // Atualizar usuário
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, ...userData }: UserFormData & { id: string }) => {
+      // Mapear 'user' para 'member' para compatibilidade com o backend
+      const mappedData = {
+        ...userData,
+        role: userData.role === 'user' ? 'member' : userData.role
+      };
+
       const response = await fetch(`/api/users/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
+        body: JSON.stringify(mappedData),
       });
-      if (!response.ok) throw new Error('Failed to update user');
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update user');
+      }
+
       return response.json();
     },
     onSuccess: () => {
@@ -192,7 +214,7 @@ export default function UserManagement() {
     deleteUserMutation.mutate(userId);
   };
 
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -200,6 +222,7 @@ export default function UserManagement() {
   const activeUsers = users.filter(user => user.status === 'active').length;
   const adminUsers = users.filter(user => user.role === 'admin').length;
   const managerUsers = users.filter(user => user.role === 'manager').length;
+  const memberUsers = users.filter(user => user.role === 'member').length; // Contagem de membros
 
   return (
     <div className="space-y-6">
@@ -216,7 +239,7 @@ export default function UserManagement() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -228,7 +251,7 @@ export default function UserManagement() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -240,7 +263,7 @@ export default function UserManagement() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -264,7 +287,7 @@ export default function UserManagement() {
                 Gerencie usuários, roles e permissões do sistema
               </CardDescription>
             </div>
-            
+
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
               <DialogTrigger asChild>
                 <Button>
@@ -279,7 +302,7 @@ export default function UserManagement() {
                     Adicione um novo usuário ao sistema
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(handleCreateUser)} className="space-y-4">
                     <FormField
@@ -295,7 +318,7 @@ export default function UserManagement() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="email"
@@ -309,7 +332,7 @@ export default function UserManagement() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="role"
@@ -323,7 +346,7 @@ export default function UserManagement() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="user">Usuário</SelectItem>
+                              <SelectItem value="member">Membro</SelectItem> {/* Alterado para Membro */}
                               <SelectItem value="manager">Gerente</SelectItem>
                               <SelectItem value="admin">Administrador</SelectItem>
                             </SelectContent>
@@ -332,7 +355,7 @@ export default function UserManagement() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="status"
@@ -354,7 +377,7 @@ export default function UserManagement() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
                         Cancelar
@@ -368,7 +391,7 @@ export default function UserManagement() {
               </DialogContent>
             </Dialog>
           </div>
-          
+
           {/* Busca */}
           <div className="flex items-center space-x-2 mt-4">
             <div className="relative flex-1 max-w-sm">
@@ -382,7 +405,7 @@ export default function UserManagement() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           {isLoading ? (
             <div className="space-y-3">
@@ -464,13 +487,13 @@ export default function UserManagement() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Tem certeza que deseja excluir o usuário "{user.name}"? 
+                                  Tem certeza que deseja excluir o usuário "{user.name}"?
                                   Esta ação não pode ser desfeita.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction 
+                                <AlertDialogAction
                                   onClick={() => handleDeleteUser(user.id)}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
@@ -487,7 +510,7 @@ export default function UserManagement() {
               </TableBody>
             </Table>
           )}
-          
+
           {filteredUsers.length === 0 && !isLoading && (
             <div className="text-center py-8">
               <User className="w-12 h-12 mx-auto text-gray-300 mb-4" />
@@ -498,7 +521,7 @@ export default function UserManagement() {
           )}
         </CardContent>
       </Card>
-      
+
       {/* Modal de Edição */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
         <DialogContent>
@@ -508,7 +531,7 @@ export default function UserManagement() {
               Atualize as informações do usuário
             </DialogDescription>
           </DialogHeader>
-          
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleUpdateUser)} className="space-y-4">
               <FormField
@@ -524,7 +547,7 @@ export default function UserManagement() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="email"
@@ -538,7 +561,7 @@ export default function UserManagement() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="role"
@@ -552,7 +575,7 @@ export default function UserManagement() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="member">Membro</SelectItem> {/* Alterado para Membro */}
                         <SelectItem value="manager">Gerente</SelectItem>
                         <SelectItem value="admin">Administrador</SelectItem>
                       </SelectContent>
@@ -561,7 +584,7 @@ export default function UserManagement() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="status"
@@ -583,7 +606,7 @@ export default function UserManagement() {
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
                   Cancelar
