@@ -1,21 +1,38 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertTicketSchema, insertTaskSchema, insertMilestoneSchema, insertCommentSchema, insertTaskDependencySchema, insertNotificationSchema } from "@shared/schema";
+import {
+  insertProjectSchema,
+  insertTicketSchema,
+  insertTaskSchema,
+  insertMilestoneSchema,
+  insertCommentSchema,
+  insertTaskDependencySchema,
+  insertNotificationSchema,
+} from "@shared/schema";
 import { z } from "zod";
-import { requireAuth, requireRole, requireProjectPermission, type AuthenticatedRequest } from "./auth";
-// import { 
-//   addUserToProject, 
-//   removeUserFromProject, 
-//   getProjectUsers, 
-//   getUserProjects, 
+import checkIpRouter from "./check-ip";
+import {
+  requireAuth,
+  requireRole,
+  requireProjectPermission,
+  type AuthenticatedRequest,
+} from "./auth";
+// import {
+//   addUserToProject,
+//   removeUserFromProject,
+//   getProjectUsers,
+//   getUserProjects,
 //   getUserProjectPermission,
 //   updateUserRole,
-//   canUserPerformAction 
+//   canUserPerformAction
 // } from "./permissions";
 import { registerUserRoutes } from "./routes/users";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Registrar o router de check-ip
+  app.use("/api", checkIpRouter);
+
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
@@ -53,24 +70,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, use the first available user as creator since we don't have authentication
       const users = await storage.getUsers();
       const defaultUser = users[0];
-      
+
       if (!defaultUser) {
         return res.status(400).json({ message: "No users found in database" });
       }
-      
+
       // Set the createdBy to the first available user
-      const projectData = { 
-        ...req.body, 
+      const projectData = {
+        ...req.body,
         createdBy: defaultUser.id,
-        status: req.body.status || 'planning'
+        status: req.body.status || "planning",
       };
-      
+
       const validatedData = insertProjectSchema.parse(projectData);
       const project = await storage.createProject(validatedData);
       res.status(201).json(project);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid project data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid project data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create project" });
     }
@@ -81,14 +100,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clean null values and ensure required defaults
       const cleanData = {
         ...req.body,
-        description: req.body.description === null ? undefined : req.body.description
+        description:
+          req.body.description === null ? undefined : req.body.description,
       };
       const validatedData = insertProjectSchema.partial().parse(cleanData);
       const project = await storage.updateProject(req.params.id, validatedData);
       res.json(project);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid project data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid project data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update project" });
     }
@@ -131,27 +153,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get first user as default reporter
       const users = await storage.getUsers();
       const defaultUser = users[0];
-      
+
       if (!defaultUser) {
         return res.status(400).json({ message: "No users found in database" });
       }
-      
+
       // Clean and prepare ticket data
-      const ticketData = { 
-        ...req.body, 
+      const ticketData = {
+        ...req.body,
         reporterId: defaultUser.id,
-        status: req.body.status || 'open',
-        priority: req.body.priority || 'medium',
+        status: req.body.status || "open",
+        priority: req.body.priority || "medium",
         projectId: req.body.projectId === null ? undefined : req.body.projectId,
-        assigneeId: req.body.assigneeId === null ? undefined : req.body.assigneeId
+        assigneeId:
+          req.body.assigneeId === null ? undefined : req.body.assigneeId,
       };
-      
+
       const validatedData = insertTicketSchema.parse(ticketData);
       const ticket = await storage.createTicket(validatedData);
       res.status(201).json(ticket);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid ticket data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid ticket data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create ticket" });
     }
@@ -163,14 +188,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cleanData = {
         ...req.body,
         projectId: req.body.projectId === null ? undefined : req.body.projectId,
-        assigneeId: req.body.assigneeId === null ? undefined : req.body.assigneeId
+        assigneeId:
+          req.body.assigneeId === null ? undefined : req.body.assigneeId,
       };
       const validatedData = insertTicketSchema.partial().parse(cleanData);
       const ticket = await storage.updateTicket(req.params.id, validatedData);
       res.json(ticket);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid ticket data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid ticket data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update ticket" });
     }
@@ -211,20 +239,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tasks", async (req, res) => {
     try {
       // Clean and prepare task data
-      const taskData = { 
+      const taskData = {
         ...req.body,
-        status: req.body.status || 'todo',
-        priority: req.body.priority || 'medium',
-        description: req.body.description === null ? undefined : req.body.description,
-        assigneeId: req.body.assigneeId === null ? undefined : req.body.assigneeId
+        status: req.body.status || "todo",
+        priority: req.body.priority || "medium",
+        description:
+          req.body.description === null ? undefined : req.body.description,
+        assigneeId:
+          req.body.assigneeId === null ? undefined : req.body.assigneeId,
       };
-      
+
       const validatedData = insertTaskSchema.parse(taskData);
       const task = await storage.createTask(validatedData);
       res.status(201).json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid task data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid task data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create task" });
     }
@@ -235,15 +267,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clean null values
       const cleanData = {
         ...req.body,
-        description: req.body.description === null ? undefined : req.body.description,
-        assigneeId: req.body.assigneeId === null ? undefined : req.body.assigneeId
+        description:
+          req.body.description === null ? undefined : req.body.description,
+        assigneeId:
+          req.body.assigneeId === null ? undefined : req.body.assigneeId,
       };
       const validatedData = insertTaskSchema.partial().parse(cleanData);
       const task = await storage.updateTask(req.params.id, validatedData);
       res.json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid task data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid task data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update task" });
     }
@@ -289,7 +325,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(comment);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid comment data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create comment" });
     }
@@ -302,7 +340,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(comment);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid comment data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update comment" });
     }
@@ -320,18 +360,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/milestones", async (req, res) => {
     try {
       // Clean and prepare milestone data
-      const milestoneData = { 
+      const milestoneData = {
         ...req.body,
-        completed: req.body.completed !== undefined ? req.body.completed : false,
-        description: req.body.description === null ? undefined : req.body.description
+        completed:
+          req.body.completed !== undefined ? req.body.completed : false,
+        description:
+          req.body.description === null ? undefined : req.body.description,
       };
-      
+
       const validatedData = insertMilestoneSchema.parse(milestoneData);
       const milestone = await storage.createMilestone(validatedData);
       res.status(201).json(milestone);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid milestone data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid milestone data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create milestone" });
     }
@@ -353,22 +397,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         taskId: req.params.taskId,
       });
-      
+
       // Check for circular dependencies
       const hasCircularDependency = await storage.checkCircularDependency(
         req.params.taskId,
-        validatedData.dependsOnTaskId
+        validatedData.dependsOnTaskId,
       );
-      
+
       if (hasCircularDependency) {
-        return res.status(400).json({ message: "Circular dependency detected" });
+        return res
+          .status(400)
+          .json({ message: "Circular dependency detected" });
       }
-      
+
       const dependency = await storage.createTaskDependency(validatedData);
       res.status(201).json(dependency);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid dependency data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid dependency data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create task dependency" });
     }
@@ -395,7 +443,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/notifications/:userId/unread", async (req, res) => {
     try {
-      const notifications = await storage.getUnreadNotifications(req.params.userId);
+      const notifications = await storage.getUnreadNotifications(
+        req.params.userId,
+      );
       res.json(notifications);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch unread notifications" });
@@ -405,19 +455,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/notifications", async (req, res) => {
     try {
       // Clean and prepare notification data
-      const notificationData = { 
+      const notificationData = {
         ...req.body,
         read: req.body.read !== undefined ? req.body.read : false,
-        entityType: req.body.entityType === null ? undefined : req.body.entityType,
-        entityId: req.body.entityId === null ? undefined : req.body.entityId
+        entityType:
+          req.body.entityType === null ? undefined : req.body.entityType,
+        entityId: req.body.entityId === null ? undefined : req.body.entityId,
       };
-      
+
       const validatedData = insertNotificationSchema.parse(notificationData);
       const notification = await storage.createNotification(validatedData);
       res.status(201).json(notification);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid notification data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid notification data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create notification" });
     }
@@ -437,7 +490,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.markAllNotificationsAsRead(req.params.userId);
       res.json({ message: "All notifications marked as read" });
     } catch (error) {
-      res.status(500).json({ message: "Failed to mark all notifications as read" });
+      res
+        .status(500)
+        .json({ message: "Failed to mark all notifications as read" });
     }
   });
 
@@ -461,123 +516,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Permissions routes
-  
+
   // Adicionar usuário a projeto
-  app.post("/api/projects/:projectId/users", requireAuth, requireProjectPermission('admin'), async (req: AuthenticatedRequest, res) => {
-    try {
-      const { userId, permission = 'read' } = req.body;
-      const { projectId } = req.params;
-      
-      if (!userId) {
-        return res.status(400).json({ message: "User ID is required" });
+  app.post(
+    "/api/projects/:projectId/users",
+    requireAuth,
+    requireProjectPermission("admin"),
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { userId, permission = "read" } = req.body;
+        const { projectId } = req.params;
+
+        if (!userId) {
+          return res.status(400).json({ message: "User ID is required" });
+        }
+
+        // This functionality would need proper permission system implementation
+        res
+          .status(501)
+          .json({ message: "User project permissions not yet implemented" });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to add user to project" });
       }
-      
-      // This functionality would need proper permission system implementation
-      res.status(501).json({ message: "User project permissions not yet implemented" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to add user to project" });
-    }
-  });
-  
+    },
+  );
+
   // Remover usuário de projeto
-  app.delete("/api/projects/:projectId/users/:userId", requireAuth, requireProjectPermission('admin'), async (req: AuthenticatedRequest, res) => {
-    try {
-      const { projectId, userId } = req.params;
-      
-      // This functionality would need proper permission system implementation
-      res.status(501).json({ message: "User project permissions not yet implemented" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to remove user from project" });
-    }
-  });
-  
+  app.delete(
+    "/api/projects/:projectId/users/:userId",
+    requireAuth,
+    requireProjectPermission("admin"),
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { projectId, userId } = req.params;
+
+        // This functionality would need proper permission system implementation
+        res
+          .status(501)
+          .json({ message: "User project permissions not yet implemented" });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to remove user from project" });
+      }
+    },
+  );
+
   // Listar usuários de um projeto
-  app.get("/api/projects/:projectId/users", requireAuth, requireProjectPermission('read'), async (req: AuthenticatedRequest, res) => {
-    try {
-      const { projectId } = req.params;
-      // This functionality would need proper permission system implementation
-      res.status(501).json({ message: "User project permissions not yet implemented" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch project users" });
-    }
-  });
-  
+  app.get(
+    "/api/projects/:projectId/users",
+    requireAuth,
+    requireProjectPermission("read"),
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { projectId } = req.params;
+        // This functionality would need proper permission system implementation
+        res
+          .status(501)
+          .json({ message: "User project permissions not yet implemented" });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to fetch project users" });
+      }
+    },
+  );
+
   // Listar projetos de um usuário
-  app.get("/api/users/:userId/projects", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      const { userId } = req.params;
-      
-      // Usuários só podem ver seus próprios projetos, exceto admins
-      if (req.user?.id !== userId && req.user?.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied" });
+  app.get(
+    "/api/users/:userId/projects",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { userId } = req.params;
+
+        // Usuários só podem ver seus próprios projetos, exceto admins
+        if (req.user?.id !== userId && req.user?.role !== "admin") {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // This functionality would need proper permission system implementation
+        res
+          .status(501)
+          .json({ message: "User project permissions not yet implemented" });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to fetch user projects" });
       }
-      
-      // This functionality would need proper permission system implementation
-      res.status(501).json({ message: "User project permissions not yet implemented" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user projects" });
-    }
-  });
-  
+    },
+  );
+
   // Verificar permissão específica
-  app.get("/api/users/:userId/projects/:projectId/permission", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      const { userId, projectId } = req.params;
-      
-      // Usuários só podem ver suas próprias permissões, exceto admins
-      if (req.user?.id !== userId && req.user?.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied" });
+  app.get(
+    "/api/users/:userId/projects/:projectId/permission",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { userId, projectId } = req.params;
+
+        // Usuários só podem ver suas próprias permissões, exceto admins
+        if (req.user?.id !== userId && req.user?.role !== "admin") {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // This functionality would need proper permission system implementation
+        res
+          .status(501)
+          .json({ message: "User project permissions not yet implemented" });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to fetch user permission" });
       }
-      
-      // This functionality would need proper permission system implementation
-      res.status(501).json({ message: "User project permissions not yet implemented" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user permission" });
-    }
-  });
-  
+    },
+  );
+
   // Atualizar role de usuário (apenas admins)
-  app.put("/api/users/:userId/role", requireAuth, requireRole(['admin']), async (req: AuthenticatedRequest, res) => {
-    try {
-      const { userId } = req.params;
-      const { role } = req.body;
-      
-      if (!role || !['admin', 'manager', 'member', 'viewer'].includes(role)) {
-        return res.status(400).json({ message: "Invalid role" });
+  app.put(
+    "/api/users/:userId/role",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { userId } = req.params;
+        const { role } = req.body;
+
+        if (!role || !["admin", "manager", "member", "viewer"].includes(role)) {
+          return res.status(400).json({ message: "Invalid role" });
+        }
+
+        // This functionality would need proper permission system implementation
+        const success = false;
+
+        if (!success) {
+          return res
+            .status(400)
+            .json({ message: "Failed to update user role" });
+        }
+
+        res.json({ message: "User role updated successfully" });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to update user role" });
       }
-      
-      // This functionality would need proper permission system implementation
-      const success = false;
-      
-      if (!success) {
-        return res.status(400).json({ message: "Failed to update user role" });
-      }
-      
-      res.json({ message: "User role updated successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update user role" });
-    }
-  });
-  
+    },
+  );
+
   // Verificar se usuário pode executar ação
-  app.get("/api/users/:userId/can/:action", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      const { userId, action } = req.params;
-      const { resourceId } = req.query;
-      
-      // Usuários só podem verificar suas próprias permissões, exceto admins
-      if (req.user?.id !== userId && req.user?.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied" });
+  app.get(
+    "/api/users/:userId/can/:action",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const { userId, action } = req.params;
+        const { resourceId } = req.query;
+
+        // Usuários só podem verificar suas próprias permissões, exceto admins
+        if (req.user?.id !== userId && req.user?.role !== "admin") {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        // This functionality would need proper permission system implementation
+        const canPerform = false;
+
+        res.json({ canPerform });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to check user permissions" });
       }
-      
-      // This functionality would need proper permission system implementation
-      const canPerform = false;
-      
-      res.json({ canPerform });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to check user permissions" });
-    }
-  });
+    },
+  );
 
   // Comments routes
   app.get("/api/comments/:ticketId", async (req, res) => {
@@ -589,38 +688,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/comments", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      const result = insertCommentSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid comment data", errors: result.error.errors });
+  app.post(
+    "/api/comments",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const result = insertCommentSchema.safeParse(req.body);
+        if (!result.success) {
+          return res
+            .status(400)
+            .json({
+              message: "Invalid comment data",
+              errors: result.error.errors,
+            });
+        }
+
+        const comment = await storage.createComment(result.data);
+        res.status(201).json(comment);
+      } catch (error) {
+        res.status(500).json({ message: "Failed to create comment" });
       }
+    },
+  );
 
-      const comment = await storage.createComment(result.data);
-      res.status(201).json(comment);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create comment" });
-    }
-  });
+  app.patch(
+    "/api/comments/:id",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const updates = req.body;
+        const comment = await storage.updateComment(req.params.id, updates);
+        res.json(comment);
+      } catch (error) {
+        res.status(500).json({ message: "Failed to update comment" });
+      }
+    },
+  );
 
-  app.patch("/api/comments/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      const updates = req.body;
-      const comment = await storage.updateComment(req.params.id, updates);
-      res.json(comment);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update comment" });
-    }
-  });
-
-  app.delete("/api/comments/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      await storage.deleteComment(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete comment" });
-    }
-  });
+  app.delete(
+    "/api/comments/:id",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        await storage.deleteComment(req.params.id);
+        res.status(204).send();
+      } catch (error) {
+        res.status(500).json({ message: "Failed to delete comment" });
+      }
+    },
+  );
 
   // Task Dependencies routes
   app.get("/api/tasks/:taskId/dependencies", async (req, res) => {
@@ -632,39 +748,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/task-dependencies", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      const result = insertTaskDependencySchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid dependency data", errors: result.error.errors });
+  app.post(
+    "/api/task-dependencies",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const result = insertTaskDependencySchema.safeParse(req.body);
+        if (!result.success) {
+          return res
+            .status(400)
+            .json({
+              message: "Invalid dependency data",
+              errors: result.error.errors,
+            });
+        }
+
+        const isCircular = await storage.checkCircularDependency(
+          result.data.taskId,
+          result.data.dependsOnTaskId,
+        );
+
+        if (isCircular) {
+          return res
+            .status(400)
+            .json({ message: "Circular dependency detected" });
+        }
+
+        const dependency = await storage.createTaskDependency(result.data);
+        res.status(201).json(dependency);
+      } catch (error) {
+        res.status(500).json({ message: "Failed to create task dependency" });
       }
+    },
+  );
 
-      const isCircular = await storage.checkCircularDependency(
-        result.data.taskId,
-        result.data.dependsOnTaskId
-      );
-
-      if (isCircular) {
-        return res.status(400).json({ message: "Circular dependency detected" });
+  app.delete(
+    "/api/task-dependencies/:id",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        await storage.deleteTaskDependency(req.params.id);
+        res.status(204).send();
+      } catch (error) {
+        res.status(500).json({ message: "Failed to delete task dependency" });
       }
+    },
+  );
 
-      const dependency = await storage.createTaskDependency(result.data);
-      res.status(201).json(dependency);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create task dependency" });
-    }
-  });
-
-  app.delete("/api/task-dependencies/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      await storage.deleteTaskDependency(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete task dependency" });
-    }
-  });
-
-  // Milestones routes  
+  // Milestones routes
   app.get("/api/milestones", async (req, res) => {
     try {
       const projectId = req.query.projectId as string;
@@ -675,19 +806,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/milestones", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      const result = insertMilestoneSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid milestone data", errors: result.error.errors });
-      }
+  app.post(
+    "/api/milestones",
+    requireAuth,
+    async (req: AuthenticatedRequest, res) => {
+      try {
+        const result = insertMilestoneSchema.safeParse(req.body);
+        if (!result.success) {
+          return res
+            .status(400)
+            .json({
+              message: "Invalid milestone data",
+              errors: result.error.errors,
+            });
+        }
 
-      const milestone = await storage.createMilestone(result.data);
-      res.status(201).json(milestone);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create milestone" });
-    }
-  });
+        const milestone = await storage.createMilestone(result.data);
+        res.status(201).json(milestone);
+      } catch (error) {
+        res.status(500).json({ message: "Failed to create milestone" });
+      }
+    },
+  );
 
   // Register user management routes
   registerUserRoutes(app);

@@ -1,4 +1,5 @@
-import sql from 'mssql';
+import sql from "mssql";
+import { useReplitIP } from "../shared/useReplitIP";
 
 // SQL Server configuration
 const sqlServerConfig: sql.config = {
@@ -14,7 +15,7 @@ const sqlServerConfig: sql.config = {
   pool: {
     max: 10,
     min: 0,
-    idleTimeoutMillis: 30000
+    idleTimeoutMillis: 30000,
   },
   requestTimeout: 30000,
   connectionTimeout: 30000,
@@ -24,18 +25,37 @@ let sqlServerPool: sql.ConnectionPool | null = null;
 
 // Initialize SQL Server connection
 async function initSqlServer() {
-  if (!process.env.DB_SERVER || !process.env.DB_DATABASE || !process.env.DB_USER || !process.env.DB_PASSWORD) {
-    throw new Error('SQL Server configuration missing. Please set DB_SERVER, DB_DATABASE, DB_USER, and DB_PASSWORD environment variables.');
+  if (
+    !process.env.DB_SERVER ||
+    !process.env.DB_DATABASE ||
+    !process.env.DB_USER ||
+    !process.env.DB_PASSWORD
+  ) {
+    throw new Error(
+      "SQL Server configuration missing. Please set DB_SERVER, DB_DATABASE, DB_USER, and DB_PASSWORD environment variables.",
+    );
   }
-  
+
   try {
-    console.log('Attempting to connect to SQL Server...');
+    const { data: ipData, isLoading: ipLoading } = useReplitIP();
+    const ip =
+      ipData?.externalIP ||
+      (ipData?.localIPs && ipData.localIPs.length > 0
+        ? ipData.localIPs[0].ip
+        : "Não disponível");
+    console.log(`Replit IP: ${ip}`);
+  } catch (error) {
+    console.error("Failed to fetch Replit IP:", error);
+  }
+
+  try {
+    console.log("Attempting to connect to SQL Server...");
     sqlServerPool = new sql.ConnectionPool(sqlServerConfig);
     await sqlServerPool.connect();
-    console.log('Connected to SQL Server successfully!');
+    console.log("Connected to SQL Server successfully!");
     await createSqlServerTables();
   } catch (error) {
-    console.error('Failed to connect to SQL Server:', error);
+    console.error("Failed to connect to SQL Server:", error);
     throw error;
   }
 }
@@ -43,7 +63,7 @@ async function initSqlServer() {
 // Create SQL Server tables
 async function createSqlServerTables() {
   if (!sqlServerPool) return;
-  
+
   try {
     await sqlServerPool.request().query(`
       -- Create tables if they don't exist
@@ -144,33 +164,33 @@ async function createSqlServerTables() {
     `);
 
     // Create default admin user for SQL Server
-    const adminExists = await sqlServerPool.request().query("SELECT COUNT(*) as count FROM users WHERE username = 'admin'");
+    const adminExists = await sqlServerPool
+      .request()
+      .query("SELECT COUNT(*) as count FROM users WHERE username = 'admin'");
     if (adminExists.recordset[0].count === 0) {
-      const userId = 'user-' + Math.random().toString(36).substr(2, 9);
-      await sqlServerPool.request()
-        .input('id', userId)
-        .input('username', 'admin')
-        .input('password', 'hashed_password_here')
-        .input('name', 'Administrador')
-        .input('email', 'admin@projectflow.com')
-        .input('role', 'admin')
-        .query(`
+      const userId = "user-" + Math.random().toString(36).substr(2, 9);
+      await sqlServerPool
+        .request()
+        .input("id", userId)
+        .input("username", "admin")
+        .input("password", "hashed_password_here")
+        .input("name", "Administrador")
+        .input("email", "admin@projectflow.com")
+        .input("role", "admin").query(`
           INSERT INTO users (id, username, password, name, email, role)
           VALUES (@id, @username, @password, @name, @email, @role)
         `);
-      console.log('Default admin user created for SQL Server with ID:', userId);
+      console.log("Default admin user created for SQL Server with ID:", userId);
     }
-    
-    console.log('SQL Server tables created successfully');
+
+    console.log("SQL Server tables created successfully");
   } catch (error) {
-    console.error('Error creating SQL Server tables:', error);
+    console.error("Error creating SQL Server tables:", error);
     throw error;
   }
 }
 
-
-
-// Database abstraction layer  
+// Database abstraction layer
 export { sqlServerPool as db };
 
 // Initialize database
@@ -179,7 +199,7 @@ export async function initDatabase() {
 }
 
 // Initialize on startup
-initDatabase().catch(error => {
-  console.error('Failed to initialize database:', error);
+initDatabase().catch((error) => {
+  console.error("Failed to initialize database:", error);
   process.exit(1);
 });
