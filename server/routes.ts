@@ -43,9 +43,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Task Types routes
   app.get("/api/task-types", async (req, res) => {
     try {
+      console.log('Getting task types from storage...');
       const taskTypes = await storage.getTaskTypes();
+      console.log('Task types retrieved:', taskTypes.length);
       res.json(taskTypes);
     } catch (error) {
+      console.error('Error in /api/task-types:', error);
       res.status(500).json({ message: "Failed to fetch task types" });
     }
   });

@@ -739,4 +739,6 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+import { SqlServerStorage } from './storage-sqlserver';
+
+export const storage = new SqlServerStorage();

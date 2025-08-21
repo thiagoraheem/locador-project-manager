@@ -162,15 +162,20 @@ export class SqlServerStorage implements IStorage {
 
   // Task Types
   async getTaskTypes(): Promise<TaskType[]> {
-    const request = getDb().request();
-    const result = await request.query('SELECT * FROM task_types WHERE active = 1 ORDER BY name ASC');
-    
-    return result.recordset.map((taskType: any) => ({
-      ...taskType,
-      active: Boolean(taskType.active),
-      createdAt: taskType.created_at.toISOString(),
-      updatedAt: taskType.updated_at.toISOString()
-    })) as TaskType[];
+    try {
+      const request = getDb().request();
+      const result = await request.query('SELECT * FROM task_types WHERE active = 1 ORDER BY name ASC');
+      
+      return result.recordset.map((taskType: any) => ({
+        ...taskType,
+        active: Boolean(taskType.active),
+        createdAt: taskType.created_at.toISOString(),
+        updatedAt: taskType.updated_at.toISOString()
+      })) as TaskType[];
+    } catch (error) {
+      console.error('Error fetching task types:', error);
+      throw error;
+    }
   }
 
   async getTaskType(id: string): Promise<TaskType | undefined> {
