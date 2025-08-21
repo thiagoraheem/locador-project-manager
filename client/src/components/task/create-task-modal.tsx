@@ -107,7 +107,7 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: (data: InsertTask) => apiRequest("/api/tasks", "POST", data),
+    mutationFn: (data: InsertTask) => apiRequest("POST", "/api/tasks", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
