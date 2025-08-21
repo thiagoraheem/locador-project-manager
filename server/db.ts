@@ -146,6 +146,13 @@ async function createSqlServerTables() {
         FOREIGN KEY (task_type_id) REFERENCES task_types(id)
       );
 
+      -- Adicionar coluna task_type_id se ela não existir (para casos onde a tabela já foi criada)
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[tasks]') AND name = 'task_type_id')
+      BEGIN
+        ALTER TABLE tasks ADD task_type_id NVARCHAR(50);
+        ALTER TABLE tasks ADD CONSTRAINT FK_tasks_task_type_id FOREIGN KEY (task_type_id) REFERENCES task_types(id);
+      END
+
       IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'notifications')
       CREATE TABLE notifications (
         id NVARCHAR(50) PRIMARY KEY DEFAULT NEWID(),

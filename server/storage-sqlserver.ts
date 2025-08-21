@@ -460,8 +460,14 @@ export class SqlServerStorage implements IStorage {
       const result = await request.query(query);
       return result.recordset.map((task: any) => ({
         ...task,
-        createdAt: task.created_at.toISOString(),
-        updatedAt: task.updated_at.toISOString()
+        taskTypeId: task.task_type_id,
+        projectId: task.project_id,
+        assigneeId: task.assignee_id,
+        startDate: task.start_date,
+        endDate: task.end_date,
+        expectedEndDate: task.expected_end_date,
+        createdAt: task.created_at?.toISOString() || task.createdAt,
+        updatedAt: task.updated_at?.toISOString() || task.updatedAt
       })) as Task[];
     } catch (error) {
       console.error('Error in getTasks:', error);
@@ -475,7 +481,20 @@ export class SqlServerStorage implements IStorage {
       .input('id', sql.NVarChar, id)
       .query('SELECT * FROM tasks WHERE id = @id');
 
-    return result.recordset[0] as Task | undefined;
+    if (!result.recordset[0]) return undefined;
+
+    const task = result.recordset[0];
+    return {
+      ...task,
+      taskTypeId: task.task_type_id,
+      projectId: task.project_id,
+      assigneeId: task.assignee_id,
+      startDate: task.start_date,
+      endDate: task.end_date,
+      expectedEndDate: task.expected_end_date,
+      createdAt: task.created_at?.toISOString() || task.createdAt,
+      updatedAt: task.updated_at?.toISOString() || task.updatedAt
+    } as Task;
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
