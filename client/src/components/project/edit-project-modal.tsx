@@ -88,12 +88,19 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
   // Reset form when project changes
   useEffect(() => {
     if (project) {
+      const startDate = project.startDate ? new Date(project.startDate) : undefined;
+      const endDate = project.endDate ? new Date(project.endDate) : undefined;
+      
+      // Validate dates
+      const validStartDate = startDate && !isNaN(startDate.getTime()) ? startDate : undefined;
+      const validEndDate = endDate && !isNaN(endDate.getTime()) ? endDate : undefined;
+      
       form.reset({
         name: project.name,
         description: project.description || "",
         status: project.status,
-        startDate: new Date(project.startDate),
-        endDate: project.endDate ? new Date(project.endDate) : undefined,
+        startDate: validStartDate,
+        endDate: validEndDate,
         createdBy: project.createdBy,
       });
     }
@@ -232,7 +239,7 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
                             )}
                             data-testid="start-date-picker"
                           >
-                            {field.value ? (
+                            {field.value && !isNaN(field.value.getTime()) ? (
                               format(field.value, "PPP")
                             ) : (
                               <span>Selecione uma data</span>
@@ -272,7 +279,7 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
                             )}
                             data-testid="end-date-picker"
                           >
-                            {field.value ? (
+                            {field.value && !isNaN(field.value.getTime()) ? (
                               format(field.value, "PPP")
                             ) : (
                               <span>Selecione uma data</span>
