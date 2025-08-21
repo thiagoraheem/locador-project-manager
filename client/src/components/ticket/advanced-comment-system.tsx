@@ -36,6 +36,23 @@ export default function AdvancedCommentSystem({ ticketId, currentUserId }: Advan
   // Fetch comments for the ticket
   const { data: comments = [], isLoading } = useQuery<CommentWithAuthor[]>({
     queryKey: ['comments', ticketId],
+    queryFn: async () => {
+      const response = await fetch(`/api/tickets/${ticketId}/comments`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+      const data = await response.json();
+      
+      // Transform data to include author info
+      return data.map((comment: any) => ({
+        ...comment,
+        author: {
+          id: comment.authorId || comment.author_id,
+          name: comment.author_name || 'Usuário Desconhecido',
+          email: comment.author_email || ''
+        }
+      }));
+    },
     enabled: !!ticketId
   });
 

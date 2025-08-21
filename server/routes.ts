@@ -411,22 +411,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tickets/:ticketId/comments", async (req, res) => {
     try {
       console.log('Creating comment with body:', req.body);
-      const validatedData = insertCommentSchema.parse({
-        ...req.body,
+      console.log('TicketId from params:', req.params.ticketId);
+      
+      // Verificar se o ticket existe
+      const ticket = await storage.getTicket(req.params.ticketId);
+      if (!ticket) {
+        console.error('Ticket not found:', req.params.ticketId);
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Verificar se o usuário existe
+      const user = await storage.getUser(req.body.authorId);
+      if (!user) {
+        console.error('User not found:', req.body.authorId);
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const commentData = {
+        content: req.body.content,
         ticketId: req.params.ticketId,
-      });
+        authorId: req.body.authorId,
+      };
+      
+      console.log('Prepared comment data:', commentData);
+      const validatedData = insertCommentSchema.parse(commentData);
       console.log('Validated comment data:', validatedData);
+      
       const comment = await storage.createComment(validatedData);
       console.log('Created comment:', comment);
       res.status(201).json(comment);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating comment:', error);
+      console.error('Error stack:', error.stack);
       if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', error.errors);
         return res
           .status(400)
           .json({ message: "Invalid comment data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create comment" });
+      res.status(500).json({ 
+        message: "Failed to create comment", 
+        error: error?.message || 'Unknown error',
+        details: error?.stack || 'No stack trace available'
+      });
     }
   });
 

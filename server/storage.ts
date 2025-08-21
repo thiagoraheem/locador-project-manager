@@ -517,26 +517,56 @@ export class DatabaseStorage implements IStorage {
   // Comments
   async getComments(ticketId: string): Promise<Comment[]> {
     if (!db) throw new Error('Database not connected');
-    const result = await db.request()
-      .input('ticketId', sql.NVarChar, ticketId)
-      .query('SELECT * FROM comments WHERE ticket_id = @ticketId ORDER BY created_at ASC');
-    return result.recordset;
+    
+    try {
+      console.log('Fetching comments for ticket:', ticketId);
+      
+      const result = await db.request()
+        .input('ticketId', sql.NVarChar, ticketId)
+        .query(`
+          SELECT 
+            c.*,
+            u.name as author_name,
+            u.email as author_email
+          FROM comments c
+          LEFT JOIN users u ON c.author_id = u.id
+          WHERE c.ticket_id = @ticketId 
+          ORDER BY c.created_at ASC
+        `);
+      
+      console.log('Comments fetched successfully:', result.recordset.length);
+      return result.recordset;
+    } catch (error: any) {
+      console.error('Database error fetching comments:', error);
+      throw new Error(`Failed to fetch comments: ${error.message}`);
+    }
   }
 
   async createComment(insertComment: InsertComment): Promise<Comment> {
     if (!db) throw new Error('Database not connected');
     const id = 'comment_' + Math.random().toString(36).substr(2, 15);
-    const result = await db.request()
-      .input('id', sql.NVarChar, id)
-      .input('content', sql.NVarChar, insertComment.content)
-      .input('ticketId', sql.NVarChar, insertComment.ticketId)
-      .input('authorId', sql.NVarChar, insertComment.authorId)
-      .query(`
-        INSERT INTO comments (id, content, ticket_id, author_id)
-        VALUES (@id, @content, @ticketId, @authorId);
-        SELECT * FROM comments WHERE id = @id;
-      `);
-    return result.recordset[0];
+    
+    try {
+      console.log('Creating comment in database with data:', { id, ...insertComment });
+      
+      const result = await db.request()
+        .input('id', sql.NVarChar, id)
+        .input('content', sql.NVarChar, insertComment.content)
+        .input('ticketId', sql.NVarChar, insertComment.ticketId)
+        .input('authorId', sql.NVarChar, insertComment.authorId)
+        .query(`
+          INSERT INTO comments (id, content, ticket_id, author_id, created_at, updated_at)
+          VALUES (@id, @content, @ticketId, @authorId, GETUTCDATE(), GETUTCDATE());
+          SELECT * FROM comments WHERE id = @id;
+        `);
+      
+      console.log('Comment created successfully:', result.recordset[0]);
+      return result.recordset[0];
+    } catch (error: any) {
+      console.error('Database error creating comment:', error);
+      console.error('Error details:', error.message);
+      throw new Error(`Failed to create comment in database: ${error.message}`);
+    }
   }
 
   async updateComment(id: string, updates: Partial<InsertComment>): Promise<Comment> {
