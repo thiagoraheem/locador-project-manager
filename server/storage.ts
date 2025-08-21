@@ -24,16 +24,28 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface TaskType {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description?: string;
   status: string;
   priority: string;
+  taskTypeId?: string;
   projectId: string;
   assigneeId?: string;
   startDate?: string;
   endDate?: string;
+  expectedEndDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,6 +104,7 @@ export interface Notification {
 // Insert types
 export type InsertUser = Omit<User, 'id' | 'createdAt'>;
 export type InsertProject = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>;
+export type InsertTaskType = Omit<TaskType, 'id' | 'createdAt' | 'updatedAt'>;
 export type InsertTask = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
 export type InsertTicket = Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>;
 export type InsertMilestone = Omit<Milestone, 'id' | 'createdAt'>;
@@ -109,6 +122,13 @@ export interface IStorage {
   updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
   deleteUser(id: string): Promise<void>;
   getUsers(): Promise<User[]>;
+  
+  // Task Types
+  getTaskTypes(): Promise<TaskType[]>;
+  getTaskType(id: string): Promise<TaskType | undefined>;
+  createTaskType(taskType: InsertTaskType): Promise<TaskType>;
+  updateTaskType(id: string, updates: Partial<InsertTaskType>): Promise<TaskType>;
+  deleteTaskType(id: string): Promise<void>;
   
   // Projects
   getProjects(): Promise<Project[]>;

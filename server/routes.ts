@@ -5,6 +5,7 @@ import {
   insertProjectSchema,
   insertTicketSchema,
   insertTaskSchema,
+  insertTaskTypeSchema,
   insertMilestoneSchema,
   insertCommentSchema,
   insertTaskDependencySchema,
@@ -36,6 +37,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Task Types routes
+  app.get("/api/task-types", async (req, res) => {
+    try {
+      const taskTypes = await storage.getTaskTypes();
+      res.json(taskTypes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch task types" });
+    }
+  });
+
+  app.get("/api/task-types/:id", async (req, res) => {
+    try {
+      const taskType = await storage.getTaskType(req.params.id);
+      if (!taskType) {
+        return res.status(404).json({ message: "Task type not found" });
+      }
+      res.json(taskType);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch task type" });
+    }
+  });
+
+  app.post("/api/task-types", async (req, res) => {
+    try {
+      const parsed = insertTaskTypeSchema.parse(req.body);
+      const taskType = await storage.createTaskType(parsed);
+      res.status(201).json(taskType);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to create task type" });
+    }
+  });
+
+  app.put("/api/task-types/:id", async (req, res) => {
+    try {
+      const parsed = insertTaskTypeSchema.partial().parse(req.body);
+      const taskType = await storage.updateTaskType(req.params.id, parsed);
+      res.json(taskType);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to update task type" });
+    }
+  });
+
+  app.delete("/api/task-types/:id", async (req, res) => {
+    try {
+      await storage.deleteTaskType(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete task type" });
     }
   });
 

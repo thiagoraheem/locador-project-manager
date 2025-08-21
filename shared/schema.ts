@@ -9,6 +9,7 @@ export const ticketPriorities = ['low', 'medium', 'high', 'critical'] as const;
 export const ticketStatuses = ['open', 'in_progress', 'resolved', 'closed'] as const;
 export const taskStatuses = ['todo', 'in_progress', 'completed'] as const;
 export const taskPriorities = ['low', 'medium', 'high'] as const;
+export const taskTypes = ['tarefa', 'melhoria', 'epico', 'historia', 'bug'] as const;
 export const notificationTypes = ['task_assigned', 'task_status_changed', 'ticket_assigned', 'ticket_status_changed', 'deadline_approaching', 'comment_added', 'dependency_completed'] as const;
 export const userRoles = ['admin', 'manager', 'member', 'viewer'] as const;
 export const permissionLevels = ['read', 'write', 'admin'] as const;
@@ -18,6 +19,7 @@ export type TicketPriority = typeof ticketPriorities[number];
 export type TicketStatus = typeof ticketStatuses[number];
 export type TaskStatus = typeof taskStatuses[number];
 export type TaskPriority = typeof taskPriorities[number];
+export type TaskType = typeof taskTypes[number];
 export type NotificationType = typeof notificationTypes[number];
 export type UserRole = typeof userRoles[number];
 export type PermissionLevel = typeof permissionLevels[number];
@@ -31,6 +33,16 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   role: text("role").notNull().default('member'),
   createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
+});
+
+export const taskTypesTable = sqliteTable("task_types", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  color: text("color").notNull().default('#3B82F6'), // cor hex para identificação visual
+  active: integer("active", { mode: 'boolean' }).notNull().default(true),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
+  updatedAt: text("updated_at").default(sql`datetime('now')`).notNull(),
 });
 
 export const projects = sqliteTable("projects", {
@@ -64,10 +76,12 @@ export const tasks = sqliteTable("tasks", {
   description: text("description"),
   status: text("status").notNull().default('todo'),
   priority: text("priority").notNull().default('medium'),
+  taskTypeId: text("task_type_id").references(() => taskTypesTable.id),
   projectId: text("project_id").references(() => projects.id).notNull(),
   assigneeId: text("assignee_id").references(() => users.id),
   startDate: text("start_date"),
   endDate: text("end_date"),
+  expectedEndDate: text("expected_end_date"), // Nova data de previsão de fim
   createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
   updatedAt: text("updated_at").default(sql`datetime('now')`).notNull(),
 });
@@ -166,6 +180,10 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
   comments: many(comments),
 }));
 
+export const taskTypesRelations = relations(taskTypesTable, ({ many }) => ({
+  tasks: many(tasks),
+}));
+
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   project: one(projects, {
     fields: [tasks.projectId],
@@ -174,6 +192,10 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   assignee: one(users, {
     fields: [tasks.assigneeId],
     references: [users.id],
+  }),
+  taskType: one(taskTypesTable, {
+    fields: [tasks.taskTypeId],
+    references: [taskTypesTable.id],
   }),
   dependencies: many(taskDependencies, { relationName: "task" }),
   dependents: many(taskDependencies, { relationName: "dependsOnTask" }),
@@ -242,6 +264,12 @@ export const insertTicketSchema = createInsertSchema(tickets).omit({
   updatedAt: true,
 });
 
+export const insertTaskTypeSchema = createInsertSchema(taskTypesTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
@@ -249,6 +277,7 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 }).extend({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  expectedEndDate: z.string().optional(),
 });
 
 export const insertMilestoneSchema = createInsertSchema(milestones).omit({
@@ -284,6 +313,7 @@ export const insertProjectUserPermissionSchema = createInsertSchema(projectUserP
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type InsertTicket = z.infer<typeof insertTicketSchema>;
+export type InsertTaskType = z.infer<typeof insertTaskTypeSchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
@@ -294,6 +324,7 @@ export type InsertProjectUserPermission = z.infer<typeof insertProjectUserPermis
 export type SelectUser = typeof users.$inferSelect;
 export type SelectProject = typeof projects.$inferSelect;
 export type SelectTicket = typeof tickets.$inferSelect;
+export type SelectTaskType = typeof taskTypesTable.$inferSelect;
 export type SelectTask = typeof tasks.$inferSelect;
 export type SelectMilestone = typeof milestones.$inferSelect;
 export type SelectNotification = typeof notifications.$inferSelect;

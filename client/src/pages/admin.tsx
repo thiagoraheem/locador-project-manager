@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { UserRolesManager } from '@/components/permissions/user-roles-manager';
 import UserManagement from '@/components/admin/user-management';
-import { Shield, Users, Settings, Database } from 'lucide-react';
+import TaskTypeManagement from '@/components/admin/task-type-management';
+import { Shield, Users, Settings, Database, Tag } from 'lucide-react';
 import Header from '@/components/layout/header';
 
 // Simulação do usuário atual - em produção viria da autenticação
@@ -54,10 +55,14 @@ export default function Admin() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="users" className="flex items-center space-x-2">
               <Users className="h-4 w-4" />
               <span>Usuários</span>
+            </TabsTrigger>
+            <TabsTrigger value="task-types" className="flex items-center space-x-2">
+              <Tag className="h-4 w-4" />
+              <span>Tipos de Tarefa</span>
             </TabsTrigger>
             <TabsTrigger value="permissions" className="flex items-center space-x-2">
               <Shield className="h-4 w-4" />
@@ -75,6 +80,10 @@ export default function Admin() {
 
           <TabsContent value="users" className="space-y-6">
             <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="task-types" className="space-y-6">
+            <TaskTypeManagement />
           </TabsContent>
 
           <TabsContent value="permissions" className="space-y-6">

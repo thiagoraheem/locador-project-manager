@@ -110,6 +110,17 @@ async function createSqlServerTables() {
         FOREIGN KEY (assignee_id) REFERENCES users(id)
       );
 
+      IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'task_types')
+      CREATE TABLE task_types (
+        id NVARCHAR(50) PRIMARY KEY DEFAULT NEWID(),
+        name NVARCHAR(100) UNIQUE NOT NULL,
+        description NTEXT,
+        color NVARCHAR(7) NOT NULL DEFAULT '#3B82F6',
+        active BIT NOT NULL DEFAULT 1,
+        created_at DATETIME2 DEFAULT GETUTCDATE(),
+        updated_at DATETIME2 DEFAULT GETUTCDATE()
+      );
+
       IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'tasks')
       CREATE TABLE tasks (
         id NVARCHAR(50) PRIMARY KEY DEFAULT NEWID(),
@@ -117,14 +128,17 @@ async function createSqlServerTables() {
         description NTEXT,
         status NVARCHAR(50) NOT NULL DEFAULT 'todo',
         priority NVARCHAR(50) NOT NULL DEFAULT 'medium',
+        task_type_id NVARCHAR(50),
         project_id NVARCHAR(50) NOT NULL,
         assignee_id NVARCHAR(50),
         start_date DATETIME2,
         end_date DATETIME2,
+        expected_end_date DATETIME2,
         created_at DATETIME2 DEFAULT GETUTCDATE(),
         updated_at DATETIME2 DEFAULT GETUTCDATE(),
         FOREIGN KEY (project_id) REFERENCES projects(id),
-        FOREIGN KEY (assignee_id) REFERENCES users(id)
+        FOREIGN KEY (assignee_id) REFERENCES users(id),
+        FOREIGN KEY (task_type_id) REFERENCES task_types(id)
       );
 
       IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'notifications')
@@ -182,6 +196,33 @@ async function createSqlServerTables() {
           VALUES (@id, @username, @password, @name, @email, @role)
         `);
       console.log("Default admin user created for SQL Server with ID:", userId);
+    }
+
+    // Seed default task types if they don't exist
+    const checkTaskTypes = await sqlServerPool.request()
+      .query('SELECT COUNT(*) as count FROM task_types WHERE active = 1');
+    
+    if (checkTaskTypes.recordset[0].count === 0) {
+      const defaultTaskTypes = [
+        { name: 'Tarefa', description: 'Tarefa comum de desenvolvimento', color: '#3B82F6' },
+        { name: 'Melhoria', description: 'Melhoramento de funcionalidade existente', color: '#10B981' },
+        { name: 'Epic', description: 'Conjunto grande de funcionalidades relacionadas', color: '#8B5CF6' },
+        { name: 'História', description: 'História de usuário ou requisito', color: '#F59E0B' },
+        { name: 'Bug', description: 'Correção de erro ou problema', color: '#EF4444' },
+      ];
+      
+      for (const taskType of defaultTaskTypes) {
+        await sqlServerPool.request()
+          .input('name', sql.NVarChar, taskType.name)
+          .input('description', sql.NVarChar, taskType.description)
+          .input('color', sql.NVarChar, taskType.color)
+          .query(`
+            INSERT INTO task_types (name, description, color)
+            VALUES (@name, @description, @color)
+          `);
+      }
+      
+      console.log('Default task types created successfully');
     }
 
     console.log("SQL Server tables created successfully");

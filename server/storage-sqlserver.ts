@@ -5,6 +5,7 @@ import type {
   User,
   Project,
   Task,
+  TaskType,
   Ticket,
   Milestone,
   Comment,
@@ -13,6 +14,7 @@ import type {
   InsertUser,
   InsertProject,
   InsertTask,
+  InsertTaskType,
   InsertTicket,
   InsertMilestone,
   InsertComment,
@@ -142,6 +144,103 @@ export class SqlServerStorage implements IStorage {
       ...user,
       createdAt: user.createdAt.toISOString()
     })) as User[];
+  }
+
+  // Task Types
+  async getTaskTypes(): Promise<TaskType[]> {
+    const request = getDb().request();
+    const result = await request.query('SELECT * FROM task_types WHERE active = 1 ORDER BY name ASC');
+    
+    return result.recordset.map(taskType => ({
+      ...taskType,
+      active: Boolean(taskType.active),
+      createdAt: taskType.createdAt.toISOString(),
+      updatedAt: taskType.updatedAt.toISOString()
+    })) as TaskType[];
+  }
+
+  async getTaskType(id: string): Promise<TaskType | undefined> {
+    const request = getDb().request();
+    const result = await request
+      .input('id', sql.NVarChar, id)
+      .query('SELECT * FROM task_types WHERE id = @id');
+    
+    if (!result.recordset[0]) return undefined;
+    
+    const taskType = result.recordset[0];
+    return {
+      ...taskType,
+      active: Boolean(taskType.active),
+      createdAt: taskType.createdAt.toISOString(),
+      updatedAt: taskType.updatedAt.toISOString()
+    } as TaskType;
+  }
+
+  async createTaskType(taskType: InsertTaskType): Promise<TaskType> {
+    const request = getDb().request();
+    const result = await request
+      .input('name', sql.NVarChar, taskType.name)
+      .input('description', sql.NVarChar, taskType.description || null)
+      .input('color', sql.NVarChar, taskType.color)
+      .input('active', sql.Bit, taskType.active ?? true)
+      .query(`
+        INSERT INTO task_types (name, description, color, active)
+        OUTPUT INSERTED.*
+        VALUES (@name, @description, @color, @active)
+      `);
+    
+    const newTaskType = result.recordset[0];
+    return {
+      ...newTaskType,
+      active: Boolean(newTaskType.active),
+      createdAt: newTaskType.createdAt.toISOString(),
+      updatedAt: newTaskType.updatedAt.toISOString()
+    } as TaskType;
+  }
+
+  async updateTaskType(id: string, updates: Partial<InsertTaskType>): Promise<TaskType> {
+    const request = getDb().request();
+    let query = 'UPDATE task_types SET ';
+    const setParts = [];
+    
+    if (updates.name) {
+      request.input('name', sql.NVarChar, updates.name);
+      setParts.push('name = @name');
+    }
+    if (updates.description !== undefined) {
+      request.input('description', sql.NVarChar, updates.description);
+      setParts.push('description = @description');
+    }
+    if (updates.color) {
+      request.input('color', sql.NVarChar, updates.color);
+      setParts.push('color = @color');
+    }
+    if (updates.active !== undefined) {
+      request.input('active', sql.Bit, updates.active);
+      setParts.push('active = @active');
+    }
+    
+    setParts.push('updatedAt = GETDATE()');
+    query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
+    
+    request.input('id', sql.NVarChar, id);
+    const result = await request.query(query);
+    
+    const taskType = result.recordset[0];
+    return {
+      ...taskType,
+      active: Boolean(taskType.active),
+      createdAt: taskType.createdAt.toISOString(),
+      updatedAt: taskType.updatedAt.toISOString()
+    } as TaskType;
+  }
+
+  async deleteTaskType(id: string): Promise<void> {
+    // Soft delete - marca como inativo ao invés de deletar
+    const request = getDb().request();
+    await request
+      .input('id', sql.NVarChar, id)
+      .query('UPDATE task_types SET active = 0, updatedAt = GETDATE() WHERE id = @id');
   }
 
   // Projects
