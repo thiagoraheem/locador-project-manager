@@ -259,23 +259,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/tickets/:id", async (req, res) => {
     try {
+      console.log('Updating ticket with ID:', req.params.id);
+      console.log('Update data:', req.body);
+      
       // Clean null values
       const cleanData = {
         ...req.body,
         projectId: req.body.projectId === null ? undefined : req.body.projectId,
-        assigneeId:
-          req.body.assigneeId === null ? undefined : req.body.assigneeId,
+        assigneeId: req.body.assigneeId === null ? undefined : req.body.assigneeId,
       };
+      
+      console.log('Cleaned data:', cleanData);
+      
       const validatedData = insertTicketSchema.partial().parse(cleanData);
+      console.log('Validated data:', validatedData);
+      
       const ticket = await storage.updateTicket(req.params.id, validatedData);
+      console.log('Updated ticket:', ticket);
+      
       res.json(ticket);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error updating ticket:', error);
       if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', error.errors);
         return res
           .status(400)
           .json({ message: "Invalid ticket data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update ticket" });
+      res.status(500).json({ message: "Failed to update ticket", error: error?.message || 'Unknown error' });
     }
   });
 

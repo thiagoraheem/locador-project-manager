@@ -447,16 +447,24 @@ export class SqlServerStorage implements IStorage {
     }
     if (updates.assigneeId !== undefined) {
       request.input('assigneeId', sql.NVarChar, updates.assigneeId);
-      setParts.push('assigneeId = @assigneeId');
+      setParts.push('assignee_id = @assigneeId');
     }
 
-    setParts.push('updatedAt = GETDATE()');
+    setParts.push('updated_at = GETDATE()');
     query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
 
     request.input('id', sql.NVarChar, id);
     const result = await request.query(query);
 
-    return result.recordset[0] as Ticket;
+    const rawTicket = result.recordset[0];
+    return {
+      ...rawTicket,
+      projectId: rawTicket.project_id,
+      reporterId: rawTicket.reporter_id,
+      assigneeId: rawTicket.assignee_id,
+      createdAt: rawTicket.created_at?.toISOString() || rawTicket.createdAt,
+      updatedAt: rawTicket.updated_at?.toISOString() || rawTicket.updatedAt
+    } as Ticket;
   }
 
   async deleteTicket(id: string): Promise<void> {
