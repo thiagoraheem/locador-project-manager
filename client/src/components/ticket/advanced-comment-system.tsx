@@ -42,13 +42,21 @@ export default function AdvancedCommentSystem({ ticketId, currentUserId }: Advan
   // Create comment mutation
   const createCommentMutation = useMutation({
     mutationFn: async (comment: InsertComment) => {
+      console.log('Making API request with:', comment);
       const response = await fetch(`/api/tickets/${ticketId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(comment)
       });
-      if (!response.ok) throw new Error('Failed to create comment');
-      return response.json();
+      console.log('API response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`Failed to create comment: ${response.status}`);
+      }
+      const result = await response.json();
+      console.log('API response data:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', ticketId] });
@@ -123,6 +131,12 @@ export default function AdvancedCommentSystem({ ticketId, currentUserId }: Advan
 
   const handleAddComment = () => {
     if (!newComment.trim()) return;
+
+    console.log('Frontend sending comment:', {
+      content: newComment,
+      ticketId,
+      authorId: currentUserId
+    });
 
     createCommentMutation.mutate({
       content: newComment,

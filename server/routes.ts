@@ -410,13 +410,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tickets/:ticketId/comments", async (req, res) => {
     try {
+      console.log('Creating comment with body:', req.body);
       const validatedData = insertCommentSchema.parse({
         ...req.body,
         ticketId: req.params.ticketId,
       });
+      console.log('Validated comment data:', validatedData);
       const comment = await storage.createComment(validatedData);
+      console.log('Created comment:', comment);
       res.status(201).json(comment);
     } catch (error) {
+      console.error('Error creating comment:', error);
       if (error instanceof z.ZodError) {
         return res
           .status(400)
