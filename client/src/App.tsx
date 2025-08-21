@@ -39,18 +39,18 @@ function Router() {
     <div className="flex flex-col h-screen bg-background">
       {/* Skip Link para acessibilidade */}
       <SkipLink targetId="main-content" />
-      
+
       {/* Mobile Navigation Header */}
       <MobileNavigation />
-      
+
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
         <Sidebar role={user?.role} aria-label="Menu principal" />
-        
+
         {/* Main Content */}
-        <main 
+        <main
           id="main-content"
-          className="flex-1 overflow-hidden pb-16 md:pb-0"
+          className="flex-1 overflow-hidden flex flex-col"
           role="main"
           aria-label="Conteúdo principal"
           tabIndex={-1}

@@ -219,7 +219,7 @@ export default function AdvancedCommentSystem({ ticketId, currentUserId }: Advan
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Comment list */}
-        <div className="space-y-4 max-h-96 overflow-y-auto">
+        <div className="space-y-4 max-h-80 overflow-y-auto">
           {comments.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">
               Nenhum comentário ainda. Seja o primeiro a comentar!
