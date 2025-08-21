@@ -4,7 +4,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { X, Calendar, User, Flag } from "lucide-react";
+import { X, Calendar, User, Flag } from "lucide-react"; 
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +34,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Task } from "@shared/schema";
+// Task type definition (matching server interface)
+type Task = {
+  id: string;
+  title: string;
+  description?: string;
+  status: "todo" | "in_progress" | "in_review" | "done";
+  priority: "low" | "medium" | "high" | "critical";
+  taskTypeId?: string;
+  projectId: string;
+  assigneeId?: string;
+  startDate?: string;
+  endDate?: string;
+  expectedEndDate?: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type TaskWithRelations = Task & {
   project?: {
@@ -61,6 +81,16 @@ type User = {
   updatedAt: Date;
 };
 
+type TaskType = {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 interface EditTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -70,12 +100,30 @@ interface EditTaskModalProps {
 const editTaskSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().optional(),
-  status: z.enum(["todo", "in_progress", "completed"]),
-  priority: z.enum(["low", "medium", "high"]),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  status: z.enum(["todo", "in_progress", "in_review", "done"]),
+  priority: z.enum(["low", "medium", "high", "critical"]),
+  taskTypeId: z.string().optional(),
   projectId: z.string().optional(),
   assigneeId: z.string().optional(),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
+  expectedEndDate: z.date().optional(),
+}).refine((data) => {
+  if (data.startDate && data.endDate) {
+    return data.endDate >= data.startDate;
+  }
+  return true;
+}, {
+  message: "Data de término deve ser posterior à data de início",
+  path: ["endDate"],
+}).refine((data) => {
+  if (data.startDate && data.expectedEndDate) {
+    return data.expectedEndDate >= data.startDate;
+  }
+  return true;
+}, {
+  message: "Data de previsão de fim deve ser posterior à data de início",
+  path: ["expectedEndDate"],
 });
 
 type EditTaskFormData = z.infer<typeof editTaskSchema>;
@@ -89,12 +137,14 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
     defaultValues: {
       title: task.title,
       description: task.description || "",
-      status: task.status,
-      priority: task.priority,
-      startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : "",
-      endDate: task.endDate ? new Date(task.endDate).toISOString().split('T')[0] : "",
-      projectId: task.projectId || "none",
-      assigneeId: task.assigneeId || "none",
+      status: task.status as "todo" | "in_progress" | "in_review" | "done",
+      priority: task.priority as "low" | "medium" | "high" | "critical",
+      taskTypeId: (task as any).taskTypeId || undefined,
+      projectId: task.projectId || undefined,
+      assigneeId: task.assigneeId || undefined,
+      startDate: task.startDate ? new Date(task.startDate) : undefined,
+      endDate: task.endDate ? new Date(task.endDate) : undefined,
+      expectedEndDate: (task as any).expectedEndDate ? new Date((task as any).expectedEndDate) : undefined,
     },
   });
 
@@ -122,14 +172,21 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
     },
   });
 
+  // Fetch task types for selection
+  const { data: taskTypes = [] } = useQuery<TaskType[]>({
+    queryKey: ["/api/task-types"],
+  });
+
   const updateTaskMutation = useMutation({
     mutationFn: async (data: EditTaskFormData) => {
       const payload = {
         ...data,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null,
-        projectId: data.projectId === "none" ? null : data.projectId,
-        assigneeId: data.assigneeId === "none" ? null : data.assigneeId,
+        startDate: data.startDate ? data.startDate.toISOString().split('T')[0] : undefined,
+        endDate: data.endDate ? data.endDate.toISOString().split('T')[0] : undefined,
+        expectedEndDate: data.expectedEndDate ? data.expectedEndDate.toISOString().split('T')[0] : undefined,
+        taskTypeId: data.taskTypeId || undefined,
+        projectId: data.projectId || undefined,
+        assigneeId: data.assigneeId || undefined,
       };
 
       const response = await fetch(`/api/tasks/${task.id}`, {
@@ -174,12 +231,14 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
       form.reset({
         title: task.title,
         description: task.description || "",
-        status: task.status,
-        priority: task.priority,
-        startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : "",
-        endDate: task.endDate ? new Date(task.endDate).toISOString().split('T')[0] : "",
-        projectId: task.projectId || "none",
-        assigneeId: task.assigneeId || "none",
+        status: task.status as "todo" | "in_progress" | "in_review" | "done",
+        priority: task.priority as "low" | "medium" | "high" | "critical",
+        taskTypeId: (task as any).taskTypeId || undefined,
+        projectId: task.projectId || undefined,
+        assigneeId: task.assigneeId || undefined,
+        startDate: task.startDate ? new Date(task.startDate) : undefined,
+        endDate: task.endDate ? new Date(task.endDate) : undefined,
+        expectedEndDate: (task as any).expectedEndDate ? new Date((task as any).expectedEndDate) : undefined,
       });
     }
   }, [task, form]);
@@ -244,7 +303,8 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
                       <SelectContent>
                         <SelectItem value="todo">A Fazer</SelectItem>
                         <SelectItem value="in_progress">Em Progresso</SelectItem>
-                        <SelectItem value="completed">Concluída</SelectItem>
+                        <SelectItem value="in_review">Em Revisão</SelectItem>
+                        <SelectItem value="done">Concluída</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -268,6 +328,7 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
                         <SelectItem value="low">Baixa</SelectItem>
                         <SelectItem value="medium">Média</SelectItem>
                         <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="critical">Crítica</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -276,53 +337,20 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Data de Início
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Data de Fim
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="projectId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Projeto</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "none" ? undefined : value)} 
+                      value={field.value || "none"}
+                    >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um projeto" />
+                        <SelectTrigger data-testid="select-task-project">
+                          <SelectValue placeholder="Selecione o projeto" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -341,24 +369,30 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
 
               <FormField
                 control={form.control}
-                name="assigneeId"
+                name="taskTypeId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Responsável
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel>Tipo de Tarefa (Opcional)</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "none" ? undefined : value)} 
+                      value={field.value || "none"}
+                    >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um responsável" />
+                        <SelectTrigger data-testid="select-task-type">
+                          <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">Nenhum responsável</SelectItem>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
+                        <SelectItem value="none">Nenhum tipo</SelectItem>
+                        {taskTypes.map((taskType) => (
+                          <SelectItem key={taskType.id} value={taskType.id}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: taskType.color }}
+                              />
+                              {taskType.name}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -368,6 +402,169 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="assigneeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Responsável
+                  </FormLabel>
+                  <Select 
+                    onValueChange={(value) => field.onChange(value === "none" ? undefined : value)} 
+                    value={field.value || "none"}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-task-assignee">
+                        <SelectValue placeholder="Selecione o responsável" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum responsável</SelectItem>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Data de Início</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-task-start-date"
+                          >
+                            {field.value ? (
+                              format(field.value, "dd/MM/yyyy")
+                            ) : (
+                              <span>Selecionar data</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={field.value || undefined}
+                          onSelect={field.onChange}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="expectedEndDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Previsão de Fim</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-task-expected-end-date"
+                          >
+                            {field.value ? (
+                              format(field.value, "dd/MM/yyyy")
+                            ) : (
+                              <span>Selecionar data</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={field.value || undefined}
+                          onSelect={field.onChange}
+                          disabled={(date) => {
+                            const startDate = form.getValues("startDate");
+                            return startDate ? date < startDate : false;
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Data de Término</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="button-task-end-date"
+                          >
+                            {field.value ? (
+                              format(field.value, "dd/MM/yyyy")
+                            ) : (
+                              <span>Selecionar data</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={field.value || undefined}
+                          onSelect={field.onChange}
+                          disabled={(date) => {
+                            const startDate = form.getValues("startDate");
+                            return startDate ? date < startDate : false;
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
 
             <div className="flex justify-end gap-2 pt-4">
               <Button

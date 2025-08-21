@@ -1,6 +1,20 @@
 
-import { getDb } from './db';
 import sql from 'mssql';
+
+let sqlServerPool: sql.ConnectionPool | null = null;
+
+export function getDb(): sql.ConnectionPool {
+  if (!sqlServerPool) {
+    throw new Error('Database not initialized');
+  }
+  return sqlServerPool;
+}
+
+// Setter para o pool (usado pelo db.ts)
+export function setDb(pool: sql.ConnectionPool) {
+  sqlServerPool = pool;
+}
+
 import type {
   User,
   Project,
@@ -140,7 +154,7 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     const result = await request.query('SELECT * FROM users ORDER BY createdAt DESC');
     
-    return result.recordset.map(user => ({
+    return result.recordset.map((user: any) => ({
       ...user,
       createdAt: user.createdAt.toISOString()
     })) as User[];
@@ -151,11 +165,11 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     const result = await request.query('SELECT * FROM task_types WHERE active = 1 ORDER BY name ASC');
     
-    return result.recordset.map(taskType => ({
+    return result.recordset.map((taskType: any) => ({
       ...taskType,
       active: Boolean(taskType.active),
-      createdAt: taskType.createdAt.toISOString(),
-      updatedAt: taskType.updatedAt.toISOString()
+      createdAt: taskType.created_at.toISOString(),
+      updatedAt: taskType.updated_at.toISOString()
     })) as TaskType[];
   }
 
@@ -171,8 +185,8 @@ export class SqlServerStorage implements IStorage {
     return {
       ...taskType,
       active: Boolean(taskType.active),
-      createdAt: taskType.createdAt.toISOString(),
-      updatedAt: taskType.updatedAt.toISOString()
+      createdAt: taskType.created_at.toISOString(),
+      updatedAt: taskType.updated_at.toISOString()
     } as TaskType;
   }
 
@@ -193,8 +207,8 @@ export class SqlServerStorage implements IStorage {
     return {
       ...newTaskType,
       active: Boolean(newTaskType.active),
-      createdAt: newTaskType.createdAt.toISOString(),
-      updatedAt: newTaskType.updatedAt.toISOString()
+      createdAt: newTaskType.created_at.toISOString(),
+      updatedAt: newTaskType.updated_at.toISOString()
     } as TaskType;
   }
 
@@ -220,7 +234,7 @@ export class SqlServerStorage implements IStorage {
       setParts.push('active = @active');
     }
     
-    setParts.push('updatedAt = GETDATE()');
+    setParts.push('updated_at = GETUTCDATE()');
     query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
     
     request.input('id', sql.NVarChar, id);
@@ -230,8 +244,8 @@ export class SqlServerStorage implements IStorage {
     return {
       ...taskType,
       active: Boolean(taskType.active),
-      createdAt: taskType.createdAt.toISOString(),
-      updatedAt: taskType.updatedAt.toISOString()
+      createdAt: taskType.created_at.toISOString(),
+      updatedAt: taskType.updated_at.toISOString()
     } as TaskType;
   }
 
@@ -240,7 +254,7 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     await request
       .input('id', sql.NVarChar, id)
-      .query('UPDATE task_types SET active = 0, updatedAt = GETDATE() WHERE id = @id');
+      .query('UPDATE task_types SET active = 0, updated_at = GETUTCDATE() WHERE id = @id');
   }
 
   // Projects

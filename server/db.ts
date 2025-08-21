@@ -54,6 +54,11 @@ async function initSqlServer() {
     sqlServerPool = new sql.ConnectionPool(sqlServerConfig);
     await sqlServerPool.connect();
     console.log("Connected to SQL Server successfully!");
+    
+    // Initialize storage with the connection pool
+    const { setDb } = await import('./storage-sqlserver');
+    setDb(sqlServerPool);
+    
     await createSqlServerTables();
   } catch (error) {
     console.error("Failed to connect to SQL Server:", error);
@@ -234,6 +239,14 @@ async function createSqlServerTables() {
 
 // Database abstraction layer
 export { sqlServerPool as db };
+
+// Set database reference for storage
+export function getDb(): sql.ConnectionPool {
+  if (!sqlServerPool) {
+    throw new Error('Database not initialized');
+  }
+  return sqlServerPool;
+}
 
 // Initialize database
 export async function initDatabase() {
