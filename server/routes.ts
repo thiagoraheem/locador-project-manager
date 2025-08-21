@@ -935,6 +935,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
 
+  // Endpoints de Relatórios
+  app.get("/api/reports/productivity", async (req, res) => {
+    try {
+      const { startDate, endDate, userId, projectId } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ 
+          message: "startDate and endDate are required" 
+        });
+      }
+      
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      const report = await storage.getProductivityReport(
+        start,
+        end,
+        userId as string | undefined,
+        projectId as string | undefined
+      );
+      
+      res.json(report);
+    } catch (error) {
+      console.error('Error in /api/reports/productivity:', error);
+      res.status(500).json({ message: "Failed to fetch productivity report" });
+    }
+  });
+
+  app.get("/api/reports/project-status", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ 
+          message: "startDate and endDate are required" 
+        });
+      }
+      
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      const report = await storage.getProjectStatusReport(start, end);
+      
+      res.json(report);
+    } catch (error) {
+      console.error('Error in /api/reports/project-status:', error);
+      res.status(500).json({ message: "Failed to fetch project status report" });
+    }
+  });
+
+  app.get("/api/reports/time-tracking", async (req, res) => {
+    try {
+      const { startDate, endDate, userId, projectId } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ 
+          message: "startDate and endDate are required" 
+        });
+      }
+      
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      const report = await storage.getTimeTrackingReport(
+        start,
+        end,
+        userId as string | undefined,
+        projectId as string | undefined
+      );
+      
+      res.json(report);
+    } catch (error) {
+      console.error('Error in /api/reports/time-tracking:', error);
+      res.status(500).json({ message: "Failed to fetch time tracking report" });
+    }
+  });
+
   // Register user management routes
   registerUserRoutes(app);
 

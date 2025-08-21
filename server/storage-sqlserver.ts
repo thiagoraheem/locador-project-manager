@@ -1,4 +1,5 @@
 import sql from 'mssql';
+import { format } from 'date-fns';
 
 let sqlServerPool: sql.ConnectionPool | null = null;
 
@@ -908,6 +909,290 @@ export class SqlServerStorage implements IStorage {
       completedTasks: completedTasks.recordset[0].count,
       teamMembers: teamMembers.recordset[0].count,
     };
+  }
+
+  // Relatórios - Produtividade
+  async getProductivityReport(startDate: Date, endDate: Date, userId?: string, projectId?: string) {
+    const request = getDb().request();
+    request
+      .input('startDate', sql.DateTime, startDate)
+      .input('endDate', sql.DateTime, endDate);
+    
+    let whereClause = 'WHERE 1=1';
+    if (userId) {
+      request.input('userId', sql.NVarChar, userId);
+      whereClause += ' AND (tasks.assigned_to = @userId OR tickets.assigned_to = @userId)';
+    }
+    if (projectId) {
+      request.input('projectId', sql.NVarChar, projectId);
+      whereClause += ' AND (tasks.project_id = @projectId OR tickets.project_id = @projectId)';
+    }
+    
+    // Estatísticas gerais de tarefas
+    const taskStatsQuery = `
+      SELECT 
+        COUNT(*) as totalTasks,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completedTasks,
+        AVG(CASE WHEN status = 'completed' THEN DATEDIFF(hour, created_at, updated_at) END) as averageTaskTime
+      FROM tasks 
+      ${whereClause}
+      AND created_at BETWEEN @startDate AND @endDate
+    `;
+    
+    const taskStats = await request.query(taskStatsQuery);
+    
+    // Estatísticas gerais de tickets
+    const ticketStatsQuery = `
+      SELECT 
+        COUNT(*) as totalTickets,
+        COUNT(CASE WHEN status = 'resolved' THEN 1 END) as resolvedTickets
+      FROM tickets 
+      ${whereClause}
+      AND created_at BETWEEN @startDate AND @endDate
+    `;
+    
+    const ticketStats = await request.query(ticketStatsQuery);
+    
+    // Produtividade por membro da equipe
+    const teamProductivityQuery = `
+      SELECT 
+        u.id,
+        u.name,
+        COUNT(DISTINCT t.id) as tasksAssigned,
+        COUNT(DISTINCT CASE WHEN t.status = 'completed' THEN t.id END) as tasksCompleted,
+        COUNT(DISTINCT CASE WHEN tk.status = 'resolved' THEN tk.id END) as ticketsResolved
+      FROM users u
+      LEFT JOIN tasks t ON u.id = t.assigned_to AND t.created_at BETWEEN @startDate AND @endDate
+      LEFT JOIN tickets tk ON u.id = tk.assigned_to AND tk.created_at BETWEEN @startDate AND @endDate
+      GROUP BY u.id, u.name
+      HAVING COUNT(DISTINCT t.id) > 0 OR COUNT(DISTINCT tk.id) > 0
+      ORDER BY u.name
+    `;
+    
+    const teamProductivity = await request.query(teamProductivityQuery);
+    
+    const taskData = taskStats.recordset[0];
+    const ticketData = ticketStats.recordset[0];
+    
+    return {
+      totalTasks: taskData.totalTasks || 0,
+      completedTasks: taskData.completedTasks || 0,
+      completionRate: taskData.totalTasks ? ((taskData.completedTasks / taskData.totalTasks) * 100) : 0,
+      totalTickets: ticketData.totalTickets || 0,
+      resolvedTickets: ticketData.resolvedTickets || 0,
+      resolutionRate: ticketData.totalTickets ? ((ticketData.resolvedTickets / ticketData.totalTickets) * 100) : 0,
+      averageTaskTime: taskData.averageTaskTime || 0,
+      teamMembers: teamProductivity.recordset.map(member => ({
+        id: member.id,
+        name: member.name,
+        tasksCompleted: member.tasksCompleted || 0,
+        tasksAssigned: member.tasksAssigned || 0,
+        ticketsResolved: member.ticketsResolved || 0,
+        productivity: member.tasksAssigned > 0 ? ((member.tasksCompleted / member.tasksAssigned) * 100) : 0
+      }))
+    };
+  }
+
+  // Relatórios - Status de Projetos
+  async getProjectStatusReport(startDate: Date, endDate: Date) {
+    const request = getDb().request();
+    request
+      .input('startDate', sql.DateTime, startDate)
+      .input('endDate', sql.DateTime, endDate);
+    
+    // Estatísticas gerais de projetos
+    const projectStatsQuery = `
+      SELECT 
+        COUNT(*) as totalProjects,
+        status,
+        COUNT(*) as count
+      FROM projects 
+      WHERE created_at BETWEEN @startDate AND @endDate OR updated_at BETWEEN @startDate AND @endDate
+      GROUP BY status
+    `;
+    
+    const projectStats = await request.query(projectStatsQuery);
+    
+    // Projetos detalhados
+    const projectsDetailQuery = `
+      SELECT 
+        id,
+        name,
+        status,
+        start_date as startDate,
+        end_date as endDate,
+        created_at,
+        CASE 
+          WHEN end_date < GETDATE() AND status != 'completed' THEN 1
+          ELSE 0
+        END as isDelayed,
+        CASE 
+          WHEN status = 'completed' THEN 100
+          WHEN status = 'in_progress' THEN 50
+          WHEN status = 'planning' THEN 25
+          ELSE 0
+        END as progress
+      FROM projects 
+      WHERE created_at BETWEEN @startDate AND @endDate OR updated_at BETWEEN @startDate AND @endDate
+      ORDER BY created_at DESC
+    `;
+    
+    const projectsDetail = await request.query(projectsDetailQuery);
+    
+    // Calcular duração média dos projetos
+    const durationQuery = `
+      SELECT AVG(DATEDIFF(day, start_date, COALESCE(end_date, GETDATE()))) as avgDuration
+      FROM projects 
+      WHERE start_date IS NOT NULL
+      AND (created_at BETWEEN @startDate AND @endDate OR updated_at BETWEEN @startDate AND @endDate)
+    `;
+    
+    const duration = await request.query(durationQuery);
+    
+    const totalProjects = projectStats.recordset.reduce((sum, row) => sum + row.count, 0);
+    const projectsByStatus = projectStats.recordset.map(row => ({
+      status: row.status,
+      count: row.count,
+      percentage: totalProjects > 0 ? ((row.count / totalProjects) * 100) : 0
+    }));
+    
+    const projectsOnTime = projectsDetail.recordset.filter(p => !p.isDelayed).length;
+    const projectsDelayed = projectsDetail.recordset.filter(p => p.isDelayed).length;
+    
+    return {
+      totalProjects,
+      projectsByStatus,
+      projectsOnTime,
+      projectsDelayed,
+      averageProjectDuration: duration.recordset[0]?.avgDuration || 0,
+      projects: projectsDetail.recordset.map(project => ({
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        progress: project.progress,
+        startDate: project.startDate?.toISOString() || '',
+        endDate: project.endDate?.toISOString() || '',
+        isDelayed: !!project.isDelayed
+      }))
+    };
+  }
+
+  // Relatórios - Controle de Tempo
+  async getTimeTrackingReport(startDate: Date, endDate: Date, userId?: string, projectId?: string) {
+    const request = getDb().request();
+    request
+      .input('startDate', sql.DateTime, startDate)
+      .input('endDate', sql.DateTime, endDate);
+    
+    let whereClause = 'WHERE created_at BETWEEN @startDate AND @endDate';
+    if (userId) {
+      request.input('userId', sql.NVarChar, userId);
+      whereClause += ' AND assigned_to = @userId';
+    }
+    if (projectId) {
+      request.input('projectId', sql.NVarChar, projectId);
+      whereClause += ' AND project_id = @projectId';
+    }
+    
+    // Simular horas baseado em tarefas (estimativa: cada tarefa = 8 horas)
+    const totalHoursQuery = `
+      SELECT 
+        COUNT(*) * 8 as totalHours,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) * 8 as billableHours
+      FROM tasks 
+      ${whereClause}
+    `;
+    
+    const hoursData = await request.query(totalHoursQuery);
+    
+    // Tempo por projeto
+    const timeByProjectQuery = `
+      SELECT 
+        p.id as projectId,
+        p.name as projectName,
+        COUNT(t.id) * 8 as hours
+      FROM projects p
+      LEFT JOIN tasks t ON p.id = t.project_id ${whereClause.replace('WHERE', 'AND')}
+      GROUP BY p.id, p.name
+      HAVING COUNT(t.id) > 0
+      ORDER BY hours DESC
+    `;
+    
+    const timeByProject = await request.query(timeByProjectQuery);
+    
+    // Tempo por membro
+    const timeByMemberQuery = `
+      SELECT 
+        u.id as memberId,
+        u.name as memberName,
+        COUNT(t.id) * 8 as hours
+      FROM users u
+      LEFT JOIN tasks t ON u.id = t.assigned_to ${whereClause.replace('WHERE', 'AND')}
+      GROUP BY u.id, u.name
+      HAVING COUNT(t.id) > 0
+      ORDER BY hours DESC
+    `;
+    
+    const timeByMember = await request.query(timeByMemberQuery);
+    
+    const totalHours = hoursData.recordset[0]?.totalHours || 0;
+    const billableHours = hoursData.recordset[0]?.billableHours || 0;
+    const nonBillableHours = totalHours - billableHours;
+    
+    // Calcular média de horas por dia
+    const daysDiff = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const averageHoursPerDay = totalHours / daysDiff;
+    
+    return {
+      totalHours,
+      billableHours,
+      nonBillableHours,
+      averageHoursPerDay,
+      timeByProject: timeByProject.recordset.map(item => ({
+        projectId: item.projectId,
+        projectName: item.projectName,
+        hours: item.hours,
+        percentage: totalHours > 0 ? ((item.hours / totalHours) * 100) : 0
+      })),
+      timeByMember: timeByMember.recordset.map(item => ({
+        memberId: item.memberId,
+        memberName: item.memberName,
+        hours: item.hours,
+        efficiency: Math.min(100, Math.max(0, (item.hours / (daysDiff * 8)) * 100)) // Baseado em 8h/dia
+      }))
+    };
+  }
+
+  // Utilitário para verificação de dependência circular
+  async checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean> {
+    const request = getDb().request();
+    request
+      .input('taskId', sql.NVarChar, taskId)
+      .input('dependsOnTaskId', sql.NVarChar, dependsOnTaskId);
+
+    // Verifica se o dependsOnTaskId já depende do taskId (direta ou indiretamente)
+    const query = `
+      WITH TaskDependencyTree AS (
+        -- Caso base: dependências diretas
+        SELECT task_id, depends_on_task_id, 1 as level
+        FROM task_dependencies
+        WHERE task_id = @dependsOnTaskId
+        
+        UNION ALL
+        
+        -- Caso recursivo: dependências transitivas
+        SELECT td.task_id, td.depends_on_task_id, tdt.level + 1
+        FROM task_dependencies td
+        INNER JOIN TaskDependencyTree tdt ON td.task_id = tdt.depends_on_task_id
+        WHERE tdt.level < 10 -- Limita a profundidade para evitar loops infinitos
+      )
+      SELECT COUNT(*) as count
+      FROM TaskDependencyTree
+      WHERE depends_on_task_id = @taskId
+    `;
+    
+    const result = await request.query(query);
+    return (result.recordset[0]?.count || 0) > 0;
   }
 }
 

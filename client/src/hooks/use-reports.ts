@@ -83,6 +83,8 @@ export function useReports() {
     end: endOfMonth(new Date()) 
   });
   const [selectedReportType, setSelectedReportType] = useState<ReportData['type']>('productivity');
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
 
   // Calcular período baseado na seleção
   const dateRange = useMemo(() => {
@@ -114,140 +116,74 @@ export function useReports() {
   }, [selectedPeriod, customDateRange]);
 
   // Query para dados de produtividade
-  const { data: productivityData, isLoading: productivityLoading } = useQuery<ProductivityReport>({
-    queryKey: ['/api/reports/productivity', dateRange],
+  const { data: productivityData, isLoading: productivityLoading, error: productivityError } = useQuery<ProductivityReport>({
+    queryKey: ['/api/reports/productivity', dateRange, selectedUserId, selectedProjectId],
     queryFn: async () => {
-      // Simular dados de produtividade
-      return {
-        totalTasks: 156,
-        completedTasks: 134,
-        completionRate: 85.9,
-        totalTickets: 89,
-        resolvedTickets: 76,
-        resolutionRate: 85.4,
-        averageTaskTime: 4.2,
-        teamMembers: [
-          {
-            id: '1',
-            name: 'João Silva',
-            tasksCompleted: 28,
-            tasksAssigned: 32,
-            ticketsResolved: 15,
-            productivity: 87.5
-          },
-          {
-            id: '2',
-            name: 'Maria Santos',
-            tasksCompleted: 35,
-            tasksAssigned: 38,
-            ticketsResolved: 22,
-            productivity: 92.1
-          },
-          {
-            id: '3',
-            name: 'Pedro Costa',
-            tasksCompleted: 24,
-            tasksAssigned: 30,
-            ticketsResolved: 18,
-            productivity: 80.0
-          },
-          {
-            id: '4',
-            name: 'Ana Oliveira',
-            tasksCompleted: 31,
-            tasksAssigned: 34,
-            ticketsResolved: 21,
-            productivity: 91.2
-          }
-        ]
-      };
-    }
+      const params = new URLSearchParams({
+        startDate: dateRange.start.toISOString(),
+        endDate: dateRange.end.toISOString()
+      });
+      
+      if (selectedUserId) {
+        params.append('userId', selectedUserId);
+      }
+      if (selectedProjectId) {
+        params.append('projectId', selectedProjectId);
+      }
+      
+      const response = await fetch(`/api/reports/productivity?${params}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch productivity report');
+      }
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    refetchInterval: 10 * 60 * 1000 // Refetch a cada 10 minutos
   });
 
   // Query para dados de status de projetos
   const { data: projectStatusData, isLoading: projectStatusLoading } = useQuery<ProjectStatusReport>({
     queryKey: ['/api/reports/project-status', dateRange],
     queryFn: async () => {
-      return {
-        totalProjects: 12,
-        projectsByStatus: [
-          { status: 'completed', count: 3, percentage: 25 },
-          { status: 'in_progress', count: 6, percentage: 50 },
-          { status: 'planning', count: 2, percentage: 16.7 },
-          { status: 'on_hold', count: 1, percentage: 8.3 }
-        ],
-        projectsOnTime: 8,
-        projectsDelayed: 4,
-        averageProjectDuration: 45,
-        projects: [
-          {
-            id: '1',
-            name: 'Sistema de Gestão',
-            status: 'in_progress',
-            progress: 75,
-            startDate: '2024-01-15',
-            endDate: '2024-03-15',
-            isDelayed: false
-          },
-          {
-            id: '2',
-            name: 'App Mobile',
-            status: 'completed',
-            progress: 100,
-            startDate: '2023-11-01',
-            endDate: '2024-01-30',
-            isDelayed: true
-          }
-        ]
-      };
-    }
+      const params = new URLSearchParams({
+        startDate: dateRange.start.toISOString(),
+        endDate: dateRange.end.toISOString()
+      });
+      
+      const response = await fetch(`/api/reports/project-status?${params}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch project status report');
+      }
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000
   });
 
   // Query para dados de controle de tempo
-  const { data: timeTrackingData, isLoading: timeTrackingLoading } = useQuery<TimeTrackingReport>({
-    queryKey: ['/api/reports/time-tracking', dateRange],
+  const { data: timeTrackingData, isLoading: timeTrackingLoading, error: timeTrackingError } = useQuery<TimeTrackingReport>({
+    queryKey: ['/api/reports/time-tracking', dateRange, selectedUserId, selectedProjectId],
     queryFn: async () => {
-      return {
-        totalHours: 320,
-        billableHours: 280,
-        nonBillableHours: 40,
-        averageHoursPerDay: 8.2,
-        timeByProject: [
-          {
-            projectId: '1',
-            projectName: 'Sistema de Gestão',
-            hours: 120,
-            percentage: 37.5
-          },
-          {
-            projectId: '2',
-            projectName: 'App Mobile',
-            hours: 80,
-            percentage: 25
-          },
-          {
-            projectId: '3',
-            projectName: 'Website Corporativo',
-            hours: 60,
-            percentage: 18.75
-          }
-        ],
-        timeByMember: [
-          {
-            memberId: '1',
-            memberName: 'João Silva',
-            hours: 85,
-            efficiency: 92
-          },
-          {
-            memberId: '2',
-            memberName: 'Maria Santos',
-            hours: 95,
-            efficiency: 88
-          }
-        ]
-      };
-    }
+      const params = new URLSearchParams({
+        startDate: dateRange.start.toISOString(),
+        endDate: dateRange.end.toISOString()
+      });
+      
+      if (selectedUserId) {
+        params.append('userId', selectedUserId);
+      }
+      if (selectedProjectId) {
+        params.append('projectId', selectedProjectId);
+      }
+      
+      const response = await fetch(`/api/reports/time-tracking?${params}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch time tracking report');
+      }
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000
   });
 
   // Função para gerar relatório
@@ -296,6 +232,43 @@ export function useReports() {
 
   const isLoading = productivityLoading || projectStatusLoading || timeTrackingLoading;
 
+  // Função para exportar dados
+  const exportReport = (reportData: any, reportType: string, format: 'csv' | 'json' = 'json') => {
+    const filename = `${reportType}-${format(dateRange.start, 'yyyy-MM-dd', { locale: ptBR })}-${format(dateRange.end, 'yyyy-MM-dd', { locale: ptBR })}.${format}`;
+    
+    if (format === 'json') {
+      const dataStr = JSON.stringify(reportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+    } else if (format === 'csv') {
+      // Implementação de CSV baseada no tipo de relatório
+      let csvContent = '';
+      
+      if (reportType === 'productivity' && reportData.teamMembers) {
+        csvContent = 'Nome,Tarefas Atribuídas,Tarefas Concluídas,Tickets Resolvidos,Produtividade\n';
+        csvContent += reportData.teamMembers.map((member: any) => 
+          `${member.name},${member.tasksAssigned},${member.tasksCompleted},${member.ticketsResolved},${member.productivity.toFixed(1)}%`
+        ).join('\n');
+      }
+      
+      const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+    }
+  };
+
   return {
     // Estado
     selectedPeriod,
@@ -304,6 +277,10 @@ export function useReports() {
     setCustomDateRange,
     selectedReportType,
     setSelectedReportType,
+    selectedUserId,
+    setSelectedUserId,
+    selectedProjectId,
+    setSelectedProjectId,
     dateRange,
     
     // Dados
@@ -313,8 +290,10 @@ export function useReports() {
     
     // Status
     isLoading,
+    hasError: !!(productivityError || timeTrackingError),
     
     // Funções
-    generateReport
+    generateReport,
+    exportReport
   };
 }

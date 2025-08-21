@@ -180,9 +180,85 @@ export interface IStorage {
     completedTasks: number;
     teamMembers: number;
   }>;
+  
+  // Relatórios
+  getProductivityReport(
+    startDate: Date,
+    endDate: Date,
+    userId?: string,
+    projectId?: string
+  ): Promise<{
+    totalTasks: number;
+    completedTasks: number;
+    completionRate: number;
+    totalTickets: number;
+    resolvedTickets: number;
+    resolutionRate: number;
+    averageTaskTime: number;
+    teamMembers: {
+      id: string;
+      name: string;
+      tasksCompleted: number;
+      tasksAssigned: number;
+      ticketsResolved: number;
+      productivity: number;
+    }[];
+  }>;
+  
+  getProjectStatusReport(
+    startDate: Date,
+    endDate: Date
+  ): Promise<{
+    totalProjects: number;
+    projectsByStatus: {
+      status: string;
+      count: number;
+      percentage: number;
+    }[];
+    projectsOnTime: number;
+    projectsDelayed: number;
+    averageProjectDuration: number;
+    projects: {
+      id: string;
+      name: string;
+      status: string;
+      progress: number;
+      startDate: string;
+      endDate: string;
+      isDelayed: boolean;
+    }[];
+  }>;
+  
+  getTimeTrackingReport(
+    startDate: Date,
+    endDate: Date,
+    userId?: string,
+    projectId?: string
+  ): Promise<{
+    totalHours: number;
+    billableHours: number;
+    nonBillableHours: number;
+    averageHoursPerDay: number;
+    timeByProject: {
+      projectId: string;
+      projectName: string;
+      hours: number;
+      percentage: number;
+    }[];
+    timeByMember: {
+      memberId: string;
+      memberName: string;
+      hours: number;
+      efficiency: number;
+    }[];
+  }>;
+  
+  // Utilitário para verificação de dependência circular
+  checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean>;
 }
 
-export class DatabaseStorage implements IStorage {
+// A implementação real está em storage-sqlserver.ts
+export class DatabaseStorage {
   // Users
   async getUser(id: string): Promise<User | undefined> {
     if (!db) throw new Error('Database not connected');
