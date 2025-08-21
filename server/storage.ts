@@ -375,15 +375,21 @@ export class DatabaseStorage implements IStorage {
     const request = db.request().input('id', sql.NVarChar, id);
     
     for (const [key, value] of Object.entries(updates)) {
-      if (key === 'startDate' || key === 'endDate') {
-        updateFields.push(`${key === 'startDate' ? 'start_date' : 'end_date'} = @${key}`);
+      if (key === 'startDate' || key === 'endDate' || key === 'expectedEndDate') {
+        const dbFieldName = key === 'startDate' ? 'start_date' : 
+                           key === 'endDate' ? 'end_date' : 
+                           'expected_end_date';
+        updateFields.push(`${dbFieldName} = @${key}`);
         request.input(key, sql.DateTime2, value ? new Date(value) : null);
       } else if (key === 'projectId') {
         updateFields.push('project_id = @projectId');
-        request.input('projectId', sql.NVarChar, value);
+        request.input('projectId', sql.NVarChar, value || null);
       } else if (key === 'assigneeId') {
         updateFields.push('assignee_id = @assigneeId');
-        request.input('assigneeId', sql.NVarChar, value);
+        request.input('assigneeId', sql.NVarChar, value || null);
+      } else if (key === 'taskTypeId') {
+        updateFields.push('task_type_id = @taskTypeId');
+        request.input('taskTypeId', sql.NVarChar, value || null);
       } else {
         updateFields.push(`${key} = @${key}`);
         request.input(key, sql.NVarChar, value);

@@ -1,4 +1,3 @@
-
 import sql from 'mssql';
 
 let sqlServerPool: sql.ConnectionPool | null = null;
@@ -44,9 +43,9 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('id', sql.NVarChar, id)
       .query('SELECT * FROM users WHERE id = @id');
-    
+
     if (!result.recordset[0]) return undefined;
-    
+
     const user = result.recordset[0];
     return {
       ...user,
@@ -59,9 +58,9 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('username', sql.NVarChar, username)
       .query('SELECT * FROM users WHERE username = @username');
-    
+
     if (!result.recordset[0]) return undefined;
-    
+
     const user = result.recordset[0];
     return {
       ...user,
@@ -74,9 +73,9 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('email', sql.NVarChar, email)
       .query('SELECT * FROM users WHERE email = @email');
-    
+
     if (!result.recordset[0]) return undefined;
-    
+
     const user = result.recordset[0];
     return {
       ...user,
@@ -97,7 +96,7 @@ export class SqlServerStorage implements IStorage {
         OUTPUT INSERTED.*
         VALUES (@username, @password, @name, @email, @role)
       `);
-    
+
     const newUser = result.recordset[0];
     return {
       ...newUser,
@@ -109,7 +108,7 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     let query = 'UPDATE users SET ';
     const setParts = [];
-    
+
     if (updates.username) {
       request.input('username', sql.NVarChar, updates.username);
       setParts.push('username = @username');
@@ -130,12 +129,12 @@ export class SqlServerStorage implements IStorage {
       request.input('role', sql.NVarChar, updates.role);
       setParts.push('role = @role');
     }
-    
+
     query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
-    
+
     request.input('id', sql.NVarChar, id);
     const result = await request.query(query);
-    
+
     const user = result.recordset[0];
     return {
       ...user,
@@ -154,7 +153,7 @@ export class SqlServerStorage implements IStorage {
     try {
       const request = getDb().request();
       const result = await request.query('SELECT * FROM users ORDER BY created_at DESC');
-      
+
       return result.recordset.map((user: any) => ({
         ...user,
         createdAt: user.created_at.toISOString()
@@ -170,7 +169,7 @@ export class SqlServerStorage implements IStorage {
     try {
       const request = getDb().request();
       const result = await request.query('SELECT * FROM task_types WHERE active = 1 ORDER BY name ASC');
-      
+
       return result.recordset.map((taskType: any) => ({
         ...taskType,
         active: Boolean(taskType.active),
@@ -188,9 +187,9 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('id', sql.NVarChar, id)
       .query('SELECT * FROM task_types WHERE id = @id');
-    
+
     if (!result.recordset[0]) return undefined;
-    
+
     const taskType = result.recordset[0];
     return {
       ...taskType,
@@ -212,7 +211,7 @@ export class SqlServerStorage implements IStorage {
         OUTPUT INSERTED.*
         VALUES (@name, @description, @color, @active)
       `);
-    
+
     const newTaskType = result.recordset[0];
     return {
       ...newTaskType,
@@ -226,7 +225,7 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     let query = 'UPDATE task_types SET ';
     const setParts = [];
-    
+
     if (updates.name) {
       request.input('name', sql.NVarChar, updates.name);
       setParts.push('name = @name');
@@ -243,13 +242,13 @@ export class SqlServerStorage implements IStorage {
       request.input('active', sql.Bit, updates.active);
       setParts.push('active = @active');
     }
-    
+
     setParts.push('updated_at = GETUTCDATE()');
     query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
-    
+
     request.input('id', sql.NVarChar, id);
     const result = await request.query(query);
-    
+
     const taskType = result.recordset[0];
     return {
       ...taskType,
@@ -288,7 +287,7 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('id', sql.NVarChar, id)
       .query('SELECT * FROM projects WHERE id = @id');
-    
+
     return result.recordset[0] as Project | undefined;
   }
 
@@ -306,7 +305,7 @@ export class SqlServerStorage implements IStorage {
         OUTPUT INSERTED.*
         VALUES (@name, @description, @status, @startDate, @endDate, @createdBy)
       `);
-    
+
     return result.recordset[0] as Project;
   }
 
@@ -314,7 +313,7 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     let query = 'UPDATE projects SET ';
     const setParts = [];
-    
+
     if (updates.name) {
       request.input('name', sql.NVarChar, updates.name);
       setParts.push('name = @name');
@@ -335,13 +334,13 @@ export class SqlServerStorage implements IStorage {
       request.input('endDate', sql.DateTime2, updates.endDate ? new Date(updates.endDate) : null);
       setParts.push('endDate = @endDate');
     }
-    
+
     setParts.push('updatedAt = GETDATE()');
     query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
-    
+
     request.input('id', sql.NVarChar, id);
     const result = await request.query(query);
-    
+
     return result.recordset[0] as Project;
   }
 
@@ -357,12 +356,12 @@ export class SqlServerStorage implements IStorage {
     try {
       const request = getDb().request();
       let query = 'SELECT * FROM tickets';
-      
+
       if (projectId) {
         request.input('projectId', sql.NVarChar, projectId);
         query += ' WHERE project_id = @projectId';
       }
-      
+
       query += ' ORDER BY created_at DESC';
       const result = await request.query(query);
       return result.recordset.map((ticket: any) => ({
@@ -381,7 +380,7 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('id', sql.NVarChar, id)
       .query('SELECT * FROM tickets WHERE id = @id');
-    
+
     return result.recordset[0] as Ticket | undefined;
   }
 
@@ -400,7 +399,7 @@ export class SqlServerStorage implements IStorage {
         OUTPUT INSERTED.*
         VALUES (@title, @description, @priority, @status, @projectId, @reporterId, @assigneeId)
       `);
-    
+
     return result.recordset[0] as Ticket;
   }
 
@@ -408,7 +407,7 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     let query = 'UPDATE tickets SET ';
     const setParts = [];
-    
+
     if (updates.title) {
       request.input('title', sql.NVarChar, updates.title);
       setParts.push('title = @title');
@@ -429,13 +428,13 @@ export class SqlServerStorage implements IStorage {
       request.input('assigneeId', sql.NVarChar, updates.assigneeId);
       setParts.push('assigneeId = @assigneeId');
     }
-    
+
     setParts.push('updatedAt = GETDATE()');
     query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
-    
+
     request.input('id', sql.NVarChar, id);
     const result = await request.query(query);
-    
+
     return result.recordset[0] as Ticket;
   }
 
@@ -451,12 +450,12 @@ export class SqlServerStorage implements IStorage {
     try {
       const request = getDb().request();
       let query = 'SELECT * FROM tasks';
-      
+
       if (projectId) {
         request.input('projectId', sql.NVarChar, projectId);
         query += ' WHERE project_id = @projectId';
       }
-      
+
       query += ' ORDER BY created_at DESC';
       const result = await request.query(query);
       return result.recordset.map((task: any) => ({
@@ -475,70 +474,70 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('id', sql.NVarChar, id)
       .query('SELECT * FROM tasks WHERE id = @id');
-    
+
     return result.recordset[0] as Task | undefined;
   }
 
-  async createTask(task: InsertTask): Promise<Task> {
+  async createTask(insertTask: InsertTask): Promise<Task> {
     const request = getDb().request();
     const result = await request
-      .input('title', sql.NVarChar, task.title)
-      .input('description', sql.NVarChar, task.description || null)
-      .input('status', sql.NVarChar, task.status)
-      .input('priority', sql.NVarChar, task.priority)
-      .input('projectId', sql.NVarChar, task.projectId)
-      .input('assigneeId', sql.NVarChar, task.assigneeId || null)
-      .input('startDate', sql.DateTime2, task.startDate ? new Date(task.startDate) : null)
-      .input('endDate', sql.DateTime2, task.endDate ? new Date(task.endDate) : null)
+      .input('id', sql.NVarChar, insertTask.id)
+      .input('title', sql.NVarChar, insertTask.title)
+      .input('description', sql.NVarChar, insertTask.description || null)
+      .input('status', sql.NVarChar, insertTask.status)
+      .input('priority', sql.NVarChar, insertTask.priority)
+      .input('taskTypeId', sql.NVarChar, insertTask.taskTypeId || null)
+      .input('projectId', sql.NVarChar, insertTask.projectId)
+      .input('assigneeId', sql.NVarChar, insertTask.assigneeId || null)
+      .input('startDate', sql.DateTime2, insertTask.startDate ? new Date(insertTask.startDate) : null)
+      .input('endDate', sql.DateTime2, insertTask.endDate ? new Date(insertTask.endDate) : null)
+      .input('expectedEndDate', sql.DateTime2, insertTask.expectedEndDate ? new Date(insertTask.expectedEndDate) : null)
       .query(`
-        INSERT INTO tasks (title, description, status, priority, projectId, assigneeId, startDate, endDate)
-        OUTPUT INSERTED.*
-        VALUES (@title, @description, @status, @priority, @projectId, @assigneeId, @startDate, @endDate)
+        INSERT INTO tasks (id, title, description, status, priority, task_type_id, project_id, assignee_id, start_date, end_date, expected_end_date)
+        VALUES (@id, @title, @description, @status, @priority, @taskTypeId, @projectId, @assigneeId, @startDate, @endDate, @expectedEndDate);
+        SELECT * FROM tasks WHERE id = @id;
       `);
-    
-    return result.recordset[0] as Task;
+    return result.recordset[0];
   }
 
   async updateTask(id: string, updates: Partial<InsertTask>): Promise<Task> {
     const request = getDb().request();
     let query = 'UPDATE tasks SET ';
     const setParts = [];
-    
-    if (updates.title) {
-      request.input('title', sql.NVarChar, updates.title);
-      setParts.push('title = @title');
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (key === 'startDate' || key === 'endDate' || key === 'expectedEndDate') {
+        const dbFieldName = key === 'startDate' ? 'start_date' : 
+                           key === 'endDate' ? 'end_date' : 
+                           'expected_end_date';
+        updateFields.push(`${dbFieldName} = @${key}`);
+        request.input(key, sql.DateTime2, value ? new Date(value) : null);
+      } else if (key === 'projectId') {
+        updateFields.push('project_id = @projectId');
+        request.input('projectId', sql.NVarChar, value || null);
+      } else if (key === 'assigneeId') {
+        updateFields.push('assignee_id = @assigneeId');
+        request.input('assigneeId', sql.NVarChar, value || null);
+      } else if (key === 'taskTypeId') {
+        updateFields.push('task_type_id = @taskTypeId');
+        request.input('taskTypeId', sql.NVarChar, value || null);
+      } else {
+        updateFields.push(`${key} = @${key}`);
+        request.input(key, sql.NVarChar, value);
+      }
     }
-    if (updates.description !== undefined) {
-      request.input('description', sql.NVarChar, updates.description);
-      setParts.push('description = @description');
+
+    if (updateFields.length > 0) {
+      updateFields.push('updated_at = GETUTCDATE()');
+      query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
+
+      request.input('id', sql.NVarChar, id);
+      const result = await request.query(query);
+
+      return result.recordset[0] as Task;
     }
-    if (updates.status) {
-      request.input('status', sql.NVarChar, updates.status);
-      setParts.push('status = @status');
-    }
-    if (updates.priority) {
-      request.input('priority', sql.NVarChar, updates.priority);
-      setParts.push('priority = @priority');
-    }
-    if (updates.assigneeId !== undefined) {
-      request.input('assigneeId', sql.NVarChar, updates.assigneeId);
-      setParts.push('assigneeId = @assigneeId');
-    }
-    if (updates.startDate !== undefined) {
-      request.input('startDate', sql.DateTime2, updates.startDate ? new Date(updates.startDate) : null);
-      setParts.push('startDate = @startDate');
-    }
-    if (updates.endDate !== undefined) {
-      request.input('endDate', sql.DateTime2, updates.endDate ? new Date(updates.endDate) : null);
-      setParts.push('endDate = @endDate');
-    }
-    
-    setParts.push('updatedAt = GETDATE()');
-    query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
-    
-    request.input('id', sql.NVarChar, id);
-    const result = await request.query(query);
-    
+
+    const result = await request.query('SELECT * FROM tasks WHERE id = @id');
     return result.recordset[0] as Task;
   }
 
@@ -553,12 +552,12 @@ export class SqlServerStorage implements IStorage {
   async getMilestones(projectId?: string): Promise<Milestone[]> {
     const request = getDb().request();
     let query = 'SELECT * FROM milestones';
-    
+
     if (projectId) {
       request.input('projectId', sql.NVarChar, projectId);
       query += ' WHERE projectId = @projectId';
     }
-    
+
     query += ' ORDER BY createdAt DESC';
     const result = await request.query(query);
     return result.recordset as Milestone[];
@@ -576,7 +575,7 @@ export class SqlServerStorage implements IStorage {
         OUTPUT INSERTED.*
         VALUES (@title, @description, @projectId, @dueDate)
       `);
-    
+
     return result.recordset[0] as Milestone;
   }
 
@@ -586,7 +585,7 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('ticketId', sql.NVarChar, ticketId)
       .query('SELECT * FROM comments WHERE ticketId = @ticketId ORDER BY createdAt DESC');
-    
+
     return result.recordset as Comment[];
   }
 
@@ -601,24 +600,24 @@ export class SqlServerStorage implements IStorage {
         OUTPUT INSERTED.*
         VALUES (@content, @ticketId, @authorId)
       `);
-    
+
     return result.recordset[0] as Comment;
   }
 
   async updateComment(id: string, updates: Partial<InsertComment>): Promise<Comment> {
     const request = getDb().request();
     let query = 'UPDATE comments SET updatedAt = GETDATE()';
-    
+
     if (updates.content) {
       request.input('content', sql.NVarChar, updates.content);
       query += ', content = @content';
     }
-    
+
     query += ' OUTPUT INSERTED.* WHERE id = @id';
-    
+
     request.input('id', sql.NVarChar, id);
     const result = await request.query(query);
-    
+
     return result.recordset[0] as Comment;
   }
 
@@ -635,7 +634,7 @@ export class SqlServerStorage implements IStorage {
     const result = await request
       .input('taskId', sql.NVarChar, taskId)
       .query('SELECT * FROM taskDependencies WHERE taskId = @taskId ORDER BY createdAt DESC');
-    
+
     return result.recordset as TaskDependency[];
   }
 
@@ -649,7 +648,7 @@ export class SqlServerStorage implements IStorage {
         OUTPUT INSERTED.*
         VALUES (@taskId, @dependsOnTaskId)
       `);
-    
+
     return result.recordset[0] as TaskDependency;
   }
 
@@ -667,7 +666,7 @@ export class SqlServerStorage implements IStorage {
       const result = await request
         .input('userId', sql.NVarChar, userId)
         .query('SELECT * FROM notifications WHERE user_id = @userId ORDER BY created_at DESC');
-      
+
       return result.recordset.map((notification: any) => ({
         ...notification,
         read: Boolean(notification.read),
@@ -693,7 +692,7 @@ export class SqlServerStorage implements IStorage {
         OUTPUT INSERTED.*
         VALUES (@type, @title, @message, @userId, @entityType, @entityId)
       `);
-    
+
     return result.recordset[0] as Notification;
   }
 
@@ -726,7 +725,7 @@ export class SqlServerStorage implements IStorage {
     teamMembers: number;
   }> {
     const request = getDb().request();
-    
+
     const [activeProjects, openTickets, completedTasks, teamMembers] = await Promise.all([
       request.query("SELECT COUNT(*) as count FROM projects WHERE status = 'in_progress'"),
       request.query("SELECT COUNT(*) as count FROM tickets WHERE status = 'open'"),
