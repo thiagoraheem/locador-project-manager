@@ -193,7 +193,7 @@ async function createSqlServerTables() {
     // Create default admin user for SQL Server
     const adminExists = await sqlServerPool
       .request()
-      .query("SELECT COUNT(*) as count FROM users WHERE username = 'admin'");
+      .query("SELECT COUNT(*) as count FROM users WHERE username = 'admin' OR email = 'admin@projectflow.com'");
     if (adminExists.recordset[0].count === 0) {
       const userId = "user-" + Math.random().toString(36).substr(2, 9);
       await sqlServerPool
@@ -229,13 +229,17 @@ async function createSqlServerTables() {
     // Insert default user if none exist
     const usersCount = await sqlServerPool.request().query('SELECT COUNT(*) as count FROM users');
     if (usersCount.recordset[0].count === 0) {
-      await sqlServerPool.request().query(`
-          INSERT INTO users (id, username, password, name, email, role)
-          VALUES 
-            ('user-1', 'admin', 'password123', 'Usuário Administrador', 'admin@projectflow.com', 'admin'),
-            ('user-h3a2kfecx', 'user', 'password123', 'Usuário Teste', 'user@projectflow.com', 'member')
-        `);
-      console.log('Default users inserted');
+      try {
+        await sqlServerPool.request().query(`
+            INSERT INTO users (id, username, password, name, email, role)
+            VALUES 
+              ('user-1', 'admin', 'password123', 'Usuário Administrador', 'admin@projectflow.com', 'admin'),
+              ('user-h3a2kfecx', 'user', 'password123', 'Usuário Teste', 'user@projectflow.com', 'member')
+          `);
+        console.log('Default users inserted');
+      } catch (error) {
+        console.log('Users may already exist, skipping default user creation');
+      }
     } else {
       // Verificar se user-1 existe especificamente
       const user1Check = await sqlServerPool.request()
@@ -243,11 +247,15 @@ async function createSqlServerTables() {
         .query('SELECT COUNT(*) as count FROM users WHERE id = @userId');
       
       if (user1Check.recordset[0].count === 0) {
-        await sqlServerPool.request().query(`
-            INSERT INTO users (id, username, password, name, email, role)
-            VALUES ('user-1', 'admin', 'password123', 'Usuário Administrador', 'admin@projectflow.com', 'admin')
-          `);
-        console.log('user-1 inserted');
+        try {
+          await sqlServerPool.request().query(`
+              INSERT INTO users (id, username, password, name, email, role)
+              VALUES ('user-1', 'admin_alt', 'password123', 'Usuário Administrador', 'admin_alt@projectflow.com', 'admin')
+            `);
+          console.log('user-1 inserted with alternative email');
+        } catch (error) {
+          console.log('User-1 creation failed, may already exist with different email');
+        }
       }
     }
 
