@@ -151,13 +151,18 @@ export class SqlServerStorage implements IStorage {
   }
 
   async getUsers(): Promise<User[]> {
-    const request = getDb().request();
-    const result = await request.query('SELECT * FROM users ORDER BY createdAt DESC');
-    
-    return result.recordset.map((user: any) => ({
-      ...user,
-      createdAt: user.createdAt.toISOString()
-    })) as User[];
+    try {
+      const request = getDb().request();
+      const result = await request.query('SELECT * FROM users ORDER BY created_at DESC');
+      
+      return result.recordset.map((user: any) => ({
+        ...user,
+        createdAt: user.created_at.toISOString()
+      })) as User[];
+    } catch (error) {
+      console.error('Error in getUsers:', error);
+      throw error;
+    }
   }
 
   // Task Types
@@ -264,9 +269,18 @@ export class SqlServerStorage implements IStorage {
 
   // Projects
   async getProjects(): Promise<Project[]> {
-    const request = getDb().request();
-    const result = await request.query('SELECT * FROM projects ORDER BY createdAt DESC');
-    return result.recordset as Project[];
+    try {
+      const request = getDb().request();
+      const result = await request.query('SELECT * FROM projects ORDER BY created_at DESC');
+      return result.recordset.map((project: any) => ({
+        ...project,
+        createdAt: project.created_at.toISOString(),
+        updatedAt: project.updated_at.toISOString()
+      })) as Project[];
+    } catch (error) {
+      console.error('Error in getProjects:', error);
+      throw error;
+    }
   }
 
   async getProject(id: string): Promise<Project | undefined> {
@@ -340,17 +354,26 @@ export class SqlServerStorage implements IStorage {
 
   // Tickets
   async getTickets(projectId?: string): Promise<Ticket[]> {
-    const request = getDb().request();
-    let query = 'SELECT * FROM tickets';
-    
-    if (projectId) {
-      request.input('projectId', sql.NVarChar, projectId);
-      query += ' WHERE projectId = @projectId';
+    try {
+      const request = getDb().request();
+      let query = 'SELECT * FROM tickets';
+      
+      if (projectId) {
+        request.input('projectId', sql.NVarChar, projectId);
+        query += ' WHERE project_id = @projectId';
+      }
+      
+      query += ' ORDER BY created_at DESC';
+      const result = await request.query(query);
+      return result.recordset.map((ticket: any) => ({
+        ...ticket,
+        createdAt: ticket.created_at.toISOString(),
+        updatedAt: ticket.updated_at.toISOString()
+      })) as Ticket[];
+    } catch (error) {
+      console.error('Error in getTickets:', error);
+      throw error;
     }
-    
-    query += ' ORDER BY createdAt DESC';
-    const result = await request.query(query);
-    return result.recordset as Ticket[];
   }
 
   async getTicket(id: string): Promise<Ticket | undefined> {
@@ -425,17 +448,26 @@ export class SqlServerStorage implements IStorage {
 
   // Tasks
   async getTasks(projectId?: string): Promise<Task[]> {
-    const request = getDb().request();
-    let query = 'SELECT * FROM tasks';
-    
-    if (projectId) {
-      request.input('projectId', sql.NVarChar, projectId);
-      query += ' WHERE projectId = @projectId';
+    try {
+      const request = getDb().request();
+      let query = 'SELECT * FROM tasks';
+      
+      if (projectId) {
+        request.input('projectId', sql.NVarChar, projectId);
+        query += ' WHERE project_id = @projectId';
+      }
+      
+      query += ' ORDER BY created_at DESC';
+      const result = await request.query(query);
+      return result.recordset.map((task: any) => ({
+        ...task,
+        createdAt: task.created_at.toISOString(),
+        updatedAt: task.updated_at.toISOString()
+      })) as Task[];
+    } catch (error) {
+      console.error('Error in getTasks:', error);
+      throw error;
     }
-    
-    query += ' ORDER BY createdAt DESC';
-    const result = await request.query(query);
-    return result.recordset as Task[];
   }
 
   async getTask(id: string): Promise<Task | undefined> {
@@ -630,12 +662,21 @@ export class SqlServerStorage implements IStorage {
 
   // Notifications
   async getNotifications(userId: string): Promise<Notification[]> {
-    const request = getDb().request();
-    const result = await request
-      .input('userId', sql.NVarChar, userId)
-      .query('SELECT * FROM notifications WHERE userId = @userId ORDER BY createdAt DESC');
-    
-    return result.recordset as Notification[];
+    try {
+      const request = getDb().request();
+      const result = await request
+        .input('userId', sql.NVarChar, userId)
+        .query('SELECT * FROM notifications WHERE user_id = @userId ORDER BY created_at DESC');
+      
+      return result.recordset.map((notification: any) => ({
+        ...notification,
+        read: Boolean(notification.read),
+        createdAt: notification.created_at.toISOString()
+      })) as Notification[];
+    } catch (error) {
+      console.error('Error in getNotifications:', error);
+      throw error;
+    }
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {
