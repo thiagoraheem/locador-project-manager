@@ -213,57 +213,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/tickets", async (req, res) => {
-    console.log('=== TICKET CREATION START ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
     try {
+      console.log('Creating ticket with body:', req.body);
+      
       // Get first user as default reporter
       const users = await storage.getUsers();
-      console.log('Found users:', users.length);
       const defaultUser = users[0];
 
       if (!defaultUser) {
         console.error('No users found in database');
         return res.status(400).json({ message: "No users found in database" });
       }
-      console.log('Using default user:', defaultUser.id);
 
       // Clean and prepare ticket data
       const ticketData = {
-        title: req.body.title || "Título padrão",
+        title: req.body.title,
         description: req.body.description || "",
         reporterId: defaultUser.id,
-        status: "open",
-        priority: "medium",
-        projectId: req.body.projectId || undefined,
-        assigneeId: req.body.assigneeId || undefined,
+        status: req.body.status || "open",
+        priority: req.body.priority || "medium",
+        projectId: req.body.projectId === null ? undefined : req.body.projectId,
+        assigneeId: req.body.assigneeId === null ? undefined : req.body.assigneeId,
       };
 
-      console.log('Prepared ticket data:', JSON.stringify(ticketData, null, 2));
+      console.log('Prepared ticket data:', ticketData);
 
-      // Test without schema validation first
-      try {
-        const ticket = await storage.createTicket(ticketData);
-        console.log('Created ticket successfully:', ticket);
-        res.status(201).json(ticket);
-      } catch (storageError: any) {
-        console.error('Storage error:', storageError);
-        res.status(500).json({ 
-          message: "Database error", 
-          error: storageError?.message || 'Unknown storage error',
-          details: storageError 
-        });
-      }
+      const validatedData = insertTicketSchema.parse(ticketData);
+      console.log('Validated ticket data:', validatedData);
       
+      const ticket = await storage.createTicket(validatedData);
+      console.log('Created ticket:', ticket);
+      
+      res.status(201).json(ticket);
     } catch (error: any) {
-      console.error('General error creating ticket:', error);
-      res.status(500).json({ 
-        message: "Failed to create ticket", 
-        error: error?.message || 'Unknown error',
-        stack: error?.stack
-      });
+      console.error('Error creating ticket:', error);
+      if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', error.errors);
+        return res
+          .status(400)
+          .json({ message: "Invalid ticket data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create ticket", error: error?.message || 'Unknown error' });
     }
-    console.log('=== TICKET CREATION END ===');
   });
 
   app.put("/api/tickets/:id", async (req, res) => {

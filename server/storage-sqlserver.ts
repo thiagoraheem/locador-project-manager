@@ -366,8 +366,11 @@ export class SqlServerStorage implements IStorage {
       const result = await request.query(query);
       return result.recordset.map((ticket: any) => ({
         ...ticket,
-        createdAt: ticket.created_at.toISOString(),
-        updatedAt: ticket.updated_at.toISOString()
+        projectId: ticket.project_id,
+        reporterId: ticket.reporter_id,
+        assigneeId: ticket.assignee_id,
+        createdAt: ticket.created_at?.toISOString() || ticket.createdAt,
+        updatedAt: ticket.updated_at?.toISOString() || ticket.updatedAt
       })) as Ticket[];
     } catch (error) {
       console.error('Error in getTickets:', error);
@@ -381,7 +384,17 @@ export class SqlServerStorage implements IStorage {
       .input('id', sql.NVarChar, id)
       .query('SELECT * FROM tickets WHERE id = @id');
 
-    return result.recordset[0] as Ticket | undefined;
+    if (!result.recordset[0]) return undefined;
+
+    const ticket = result.recordset[0];
+    return {
+      ...ticket,
+      projectId: ticket.project_id,
+      reporterId: ticket.reporter_id,
+      assigneeId: ticket.assignee_id,
+      createdAt: ticket.created_at?.toISOString() || ticket.createdAt,
+      updatedAt: ticket.updated_at?.toISOString() || ticket.updatedAt
+    } as Ticket;
   }
 
   async createTicket(ticket: InsertTicket): Promise<Ticket> {
@@ -395,12 +408,20 @@ export class SqlServerStorage implements IStorage {
       .input('reporterId', sql.NVarChar, ticket.reporterId)
       .input('assigneeId', sql.NVarChar, ticket.assigneeId || null)
       .query(`
-        INSERT INTO tickets (title, description, priority, status, projectId, reporterId, assigneeId)
+        INSERT INTO tickets (title, description, priority, status, project_id, reporter_id, assignee_id)
         OUTPUT INSERTED.*
         VALUES (@title, @description, @priority, @status, @projectId, @reporterId, @assigneeId)
       `);
 
-    return result.recordset[0] as Ticket;
+    const rawTicket = result.recordset[0];
+    return {
+      ...rawTicket,
+      projectId: rawTicket.project_id,
+      reporterId: rawTicket.reporter_id,
+      assigneeId: rawTicket.assignee_id,
+      createdAt: rawTicket.created_at?.toISOString() || rawTicket.createdAt,
+      updatedAt: rawTicket.updated_at?.toISOString() || rawTicket.updatedAt
+    } as Ticket;
   }
 
   async updateTicket(id: string, updates: Partial<InsertTicket>): Promise<Ticket> {
