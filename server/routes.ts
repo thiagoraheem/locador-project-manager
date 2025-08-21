@@ -420,6 +420,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Ticket not found" });
       }
       
+      // Verificar se o usuário existe
+      const user = await storage.getUser(req.body.authorId);
+      if (!user) {
+        console.error('User not found:', req.body.authorId);
+        // Se o user-1 não existe, criar um usuário padrão
+        if (req.body.authorId === 'user-1') {
+          try {
+            await storage.createUser({
+              id: 'user-1',
+              username: 'admin',
+              password: 'password123',
+              name: 'Usuário Administrador',
+              email: 'admin@projectflow.com',
+              role: 'admin'
+            });
+            console.log('Created default user-1');
+          } catch (createUserError) {
+            console.error('Error creating default user:', createUserError);
+            return res.status(400).json({ message: "User not found and could not create default user" });
+          }
+        } else {
+          return res.status(404).json({ message: "User not found" });
+        }
+      }
+      
       const commentData = {
         content: req.body.content,
         ticketId: req.params.ticketId,

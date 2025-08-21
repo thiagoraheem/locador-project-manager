@@ -236,6 +236,19 @@ async function createSqlServerTables() {
             ('user-h3a2kfecx', 'user', 'password123', 'Usuário Teste', 'user@projectflow.com', 'member')
         `);
       console.log('Default users inserted');
+    } else {
+      // Verificar se user-1 existe especificamente
+      const user1Check = await sqlServerPool.request()
+        .input('userId', sqlServerPool.constructor.NVarChar, 'user-1')
+        .query('SELECT COUNT(*) as count FROM users WHERE id = @userId');
+      
+      if (user1Check.recordset[0].count === 0) {
+        await sqlServerPool.request().query(`
+            INSERT INTO users (id, username, password, name, email, role)
+            VALUES ('user-1', 'admin', 'password123', 'Usuário Administrador', 'admin@projectflow.com', 'admin')
+          `);
+        console.log('user-1 inserted');
+      }
     }
 
     console.log("SQL Server tables created successfully");

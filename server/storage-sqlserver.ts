@@ -83,19 +83,32 @@ export class SqlServerStorage implements IStorage {
     } as User;
   }
 
-  async createUser(user: InsertUser): Promise<User> {
+  async createUser(user: InsertUser & { id?: string }): Promise<User> {
     const request = getDb().request();
+    
+    let query;
+    if (user.id) {
+      request.input('id', sql.NVarChar, user.id);
+      query = `
+        INSERT INTO users (id, username, password, name, email, role)
+        OUTPUT INSERTED.*
+        VALUES (@id, @username, @password, @name, @email, @role)
+      `;
+    } else {
+      query = `
+        INSERT INTO users (username, password, name, email, role)
+        OUTPUT INSERTED.*
+        VALUES (@username, @password, @name, @email, @role)
+      `;
+    }
+    
     const result = await request
       .input('username', sql.NVarChar, user.username)
       .input('password', sql.NVarChar, user.password)
       .input('name', sql.NVarChar, user.name)
       .input('email', sql.NVarChar, user.email)
       .input('role', sql.NVarChar, user.role)
-      .query(`
-        INSERT INTO users (username, password, name, email, role)
-        OUTPUT INSERTED.*
-        VALUES (@username, @password, @name, @email, @role)
-      `);
+      .query(query);
 
     const newUser = result.recordset[0];
     return {
