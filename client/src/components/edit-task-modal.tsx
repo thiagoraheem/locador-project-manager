@@ -198,7 +198,9 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update task");
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Failed to update task (${response.status})`;
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -212,7 +214,10 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
     },
     onError: (error) => {
       console.error("Error updating task:", error);
-      toast.error("Erro ao atualizar tarefa. Tente novamente.");
+      const errorMessage = error.message.includes("Failed to update task") 
+        ? error.message 
+        : "Erro ao atualizar tarefa. Tente novamente.";
+      toast.error(errorMessage);
     },
   });
 

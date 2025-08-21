@@ -506,6 +506,8 @@ export class SqlServerStorage implements IStorage {
     const updateFields = [];
 
     for (const [key, value] of Object.entries(updates)) {
+      if (value === undefined) continue; // Pular valores undefined
+      
       if (key === 'startDate' || key === 'endDate' || key === 'expectedEndDate') {
         const dbFieldName = key === 'startDate' ? 'start_date' : 
                            key === 'endDate' ? 'end_date' : 
@@ -521,24 +523,39 @@ export class SqlServerStorage implements IStorage {
       } else if (key === 'taskTypeId') {
         updateFields.push('task_type_id = @taskTypeId');
         request.input('taskTypeId', sql.NVarChar, value || null);
-      } else {
+      } else if (key === 'title' || key === 'description' || key === 'status' || key === 'priority') {
         updateFields.push(`${key} = @${key}`);
-        request.input(key, sql.NVarChar, value);
+        request.input(key, sql.NVarChar, value || null);
       }
     }
 
     if (updateFields.length > 0) {
       updateFields.push('updated_at = GETUTCDATE()');
-      query += updateFields.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
+      query += updateFields.join(', ') + ' WHERE id = @id';
 
       request.input('id', sql.NVarChar, id);
-      const result = await request.query(query);
+      await request.query(query);
 
-      return result.recordset[0] as Task;
+      // Buscar a tarefa atualizada
+      const selectResult = await getDb().request()
+        .input('id', sql.NVarChar, id)
+        .query('SELECT * FROM tasks WHERE id = @id');
+
+      if (!selectResult.recordset[0]) {
+        throw new Error('Task not found after update');
+      }
+
+      return selectResult.recordset[0] as Task;
     }
 
+    // Se não há campos para atualizar, apenas retornar a tarefa existente
     request.input('id', sql.NVarChar, id);
     const result = await request.query('SELECT * FROM tasks WHERE id = @id');
+    
+    if (!result.recordset[0]) {
+      throw new Error('Task not found');
+    }
+    
     return result.recordset[0] as Task;
   }
 

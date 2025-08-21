@@ -327,26 +327,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PUT /api/tasks/:id - Update task
   app.put("/api/tasks/:id", async (req, res) => {
     try {
-      // Clean null values
-      const cleanData = {
-        ...req.body,
-        description:
-          req.body.description === null ? undefined : req.body.description,
-        assigneeId:
-          req.body.assigneeId === null ? undefined : req.body.assigneeId,
-      };
-      const validatedData = insertTaskSchema.partial().parse(cleanData);
-      const task = await storage.updateTask(req.params.id, validatedData);
-      res.json(task);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ message: "Invalid task data", errors: error.errors });
+      const { id } = req.params;
+      const updates = req.body;
+
+      console.log("Updating task:", id, "with updates:", updates);
+
+      // Verificar se a tarefa existe
+      const existingTask = await storage.getTask(id);
+      if (!existingTask) {
+        return res.status(404).json({ message: "Task not found" });
       }
-      res.status(500).json({ message: "Failed to update task" });
+
+      const updatedTask = await storage.updateTask(id, updates);
+      console.log("Task updated successfully:", updatedTask);
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      console.error("Error stack:", error.stack);
+      res.status(500).json({ 
+        message: "Failed to update task", 
+        error: error.message,
+        details: error.stack 
+      });
     }
   });
 
