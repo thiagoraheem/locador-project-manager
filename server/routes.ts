@@ -420,13 +420,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Ticket not found" });
       }
       
-      // Verificar se o usuário existe
-      const user = await storage.getUser(req.body.authorId);
-      if (!user) {
-        console.error('User not found:', req.body.authorId);
-        return res.status(404).json({ message: "User not found" });
-      }
-      
       const commentData = {
         content: req.body.content,
         ticketId: req.params.ticketId,

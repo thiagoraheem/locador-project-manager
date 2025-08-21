@@ -39,9 +39,9 @@ async function initSqlServer() {
     // Buscar IPs do servidor usando função utilitária
     const { getServerIPs } = await import("./ip-utils");
     const ipData = await getServerIPs();
-    const ip = ipData?.externalIP || 
-      (ipData?.localIPs && ipData.localIPs.length > 0 
-        ? ipData.localIPs[0].ip 
+    const ip = ipData?.externalIP ||
+      (ipData?.localIPs && ipData.localIPs.length > 0
+        ? ipData.localIPs[0].ip
         : "Não disponível");
     console.log(`Replit IP: ${ip}`);
     console.log(`IPs locais encontrados:`, ipData.localIPs);
@@ -54,11 +54,11 @@ async function initSqlServer() {
     sqlServerPool = new sql.ConnectionPool(sqlServerConfig);
     await sqlServerPool.connect();
     console.log("Connected to SQL Server successfully!");
-    
+
     // Initialize storage with the connection pool
     const { setDb } = await import('./storage-sqlserver');
     setDb(sqlServerPool);
-    
+
     await createSqlServerTables();
   } catch (error) {
     console.error("Failed to connect to SQL Server:", error);
@@ -212,29 +212,30 @@ async function createSqlServerTables() {
 
     // Seed default task types if they don't exist
     const checkTaskTypes = await sqlServerPool.request()
-      .query('SELECT COUNT(*) as count FROM task_types WHERE active = 1');
-    
+      .query('SELECT COUNT(*) as count FROM task_types');
+
     if (checkTaskTypes.recordset[0].count === 0) {
-      const defaultTaskTypes = [
-        { name: 'Tarefa', description: 'Tarefa comum de desenvolvimento', color: '#3B82F6' },
-        { name: 'Melhoria', description: 'Melhoramento de funcionalidade existente', color: '#10B981' },
-        { name: 'Epic', description: 'Conjunto grande de funcionalidades relacionadas', color: '#8B5CF6' },
-        { name: 'História', description: 'História de usuário ou requisito', color: '#F59E0B' },
-        { name: 'Bug', description: 'Correção de erro ou problema', color: '#EF4444' },
-      ];
-      
-      for (const taskType of defaultTaskTypes) {
-        await sqlServerPool.request()
-          .input('name', sql.NVarChar, taskType.name)
-          .input('description', sql.NVarChar, taskType.description)
-          .input('color', sql.NVarChar, taskType.color)
-          .query(`
-            INSERT INTO task_types (name, description, color)
-            VALUES (@name, @description, @color)
-          `);
-      }
-      
-      console.log('Default task types created successfully');
+      await sqlServerPool.request().query(`
+          INSERT INTO task_types (id, name, description, color, active)
+          VALUES 
+            ('tasktype_1', 'Feature', 'Nova funcionalidade', '#10B981', 1),
+            ('tasktype_2', 'Bug', 'Correção de erro', '#EF4444', 1),
+            ('tasktype_3', 'Task', 'Tarefa geral', '#3B82F6', 1),
+            ('tasktype_4', 'Enhancement', 'Melhoria', '#8B5CF6', 1)
+        `);
+      console.log('Default task types inserted');
+    }
+
+    // Insert default user if none exist
+    const usersCount = await sqlServerPool.request().query('SELECT COUNT(*) as count FROM users');
+    if (usersCount.recordset[0].count === 0) {
+      await sqlServerPool.request().query(`
+          INSERT INTO users (id, username, password, name, email, role)
+          VALUES 
+            ('user-1', 'admin', 'password123', 'Usuário Administrador', 'admin@projectflow.com', 'admin'),
+            ('user-h3a2kfecx', 'user', 'password123', 'Usuário Teste', 'user@projectflow.com', 'member')
+        `);
+      console.log('Default users inserted');
     }
 
     console.log("SQL Server tables created successfully");
