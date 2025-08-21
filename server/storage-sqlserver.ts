@@ -503,7 +503,7 @@ export class SqlServerStorage implements IStorage {
   async updateTask(id: string, updates: Partial<InsertTask>): Promise<Task> {
     const request = getDb().request();
     let query = 'UPDATE tasks SET ';
-    const setParts = [];
+    const updateFields = [];
 
     for (const [key, value] of Object.entries(updates)) {
       if (key === 'startDate' || key === 'endDate' || key === 'expectedEndDate') {
@@ -529,7 +529,7 @@ export class SqlServerStorage implements IStorage {
 
     if (updateFields.length > 0) {
       updateFields.push('updated_at = GETUTCDATE()');
-      query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
+      query += updateFields.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
 
       request.input('id', sql.NVarChar, id);
       const result = await request.query(query);
@@ -537,6 +537,7 @@ export class SqlServerStorage implements IStorage {
       return result.recordset[0] as Task;
     }
 
+    request.input('id', sql.NVarChar, id);
     const result = await request.query('SELECT * FROM tasks WHERE id = @id');
     return result.recordset[0] as Task;
   }
