@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -23,30 +23,30 @@ export type UserRole = typeof userRoles[number];
 export type PermissionLevel = typeof permissionLevels[number];
 
 // Table definitions
-export const users = pgTable("users", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   role: text("role").notNull().default('member'),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
 });
 
-export const projects = pgTable("projects", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const projects = sqliteTable("projects", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   name: text("name").notNull(),
   description: text("description"),
   status: text("status").notNull().default('planning'),
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
   createdBy: text("created_by").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
+  updatedAt: text("updated_at").default(sql`datetime('now')`).notNull(),
 });
 
-export const tickets = pgTable("tickets", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const tickets = sqliteTable("tickets", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   title: text("title").notNull(),
   description: text("description").notNull(),
   priority: text("priority").notNull().default('medium'),
@@ -54,69 +54,69 @@ export const tickets = pgTable("tickets", {
   projectId: text("project_id").references(() => projects.id),
   reporterId: text("reporter_id").references(() => users.id).notNull(),
   assigneeId: text("assignee_id").references(() => users.id),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
+  updatedAt: text("updated_at").default(sql`datetime('now')`).notNull(),
 });
 
-export const tasks = pgTable("tasks", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const tasks = sqliteTable("tasks", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   title: text("title").notNull(),
   description: text("description"),
   status: text("status").notNull().default('todo'),
   priority: text("priority").notNull().default('medium'),
   projectId: text("project_id").references(() => projects.id).notNull(),
   assigneeId: text("assignee_id").references(() => users.id),
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
+  updatedAt: text("updated_at").default(sql`datetime('now')`).notNull(),
 });
 
-export const milestones = pgTable("milestones", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const milestones = sqliteTable("milestones", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   title: text("title").notNull(),
   description: text("description"),
   projectId: text("project_id").references(() => projects.id).notNull(),
-  dueDate: timestamp("due_date").notNull(),
-  completed: boolean("completed").notNull().default(false),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  dueDate: text("due_date").notNull(),
+  completed: integer("completed", { mode: 'boolean' }).notNull().default(false),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
 });
 
-export const notifications = pgTable("notifications", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const notifications = sqliteTable("notifications", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   type: text("type").notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   entityType: text("entity_type"), // 'task', 'ticket', 'project'
   entityId: text("entity_id"), // ID da entidade relacionada
-  read: boolean("read").notNull().default(false),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  read: integer("read", { mode: 'boolean' }).notNull().default(false),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
 });
 
-export const taskDependencies = pgTable("task_dependencies", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const taskDependencies = sqliteTable("task_dependencies", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   taskId: text("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
   dependsOnTaskId: text("depends_on_task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
 });
 
-export const comments = pgTable("comments", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const comments = sqliteTable("comments", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   content: text("content").notNull(),
   ticketId: text("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
   authorId: text("author_id").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
+  updatedAt: text("updated_at").default(sql`datetime('now')`).notNull(),
 });
 
-export const projectUserPermissions = pgTable("project_user_permissions", {
-  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+export const projectUserPermissions = sqliteTable("project_user_permissions", {
+  id: text("id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   permission: text("permission").notNull().default('read'),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+  createdAt: text("created_at").default(sql`datetime('now')`).notNull(),
+  updatedAt: text("updated_at").default(sql`datetime('now')`).notNull(),
 });
 
 // Relations
