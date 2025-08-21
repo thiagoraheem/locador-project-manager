@@ -885,37 +885,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Milestones routes
-  app.get("/api/milestones", async (req, res) => {
-    try {
-      const projectId = req.query.projectId as string;
-      const milestones = await storage.getMilestones(projectId);
-      res.json(milestones);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch milestones" });
-    }
-  });
-
-  app.post(
-    "/api/milestones",
-    requireAuth,
-    async (req: AuthenticatedRequest, res) => {
-      try {
-        const result = insertMilestoneSchema.safeParse(req.body);
-        if (!result.success) {
-          return res.status(400).json({
-            message: "Invalid milestone data",
-            errors: result.error.errors,
-          });
-        }
-
-        const milestone = await storage.createMilestone(result.data);
-        res.status(201).json(milestone);
-      } catch (error) {
-        res.status(500).json({ message: "Failed to create milestone" });
-      }
-    },
-  );
 
   // Register user management routes
   registerUserRoutes(app);

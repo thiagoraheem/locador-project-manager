@@ -49,7 +49,7 @@ export class SqlServerStorage implements IStorage {
     const user = result.recordset[0];
     return {
       ...user,
-      createdAt: user.createdAt.toISOString()
+      createdAt: user.created_at?.toISOString() || user.createdAt
     } as User;
   }
 
@@ -64,7 +64,7 @@ export class SqlServerStorage implements IStorage {
     const user = result.recordset[0];
     return {
       ...user,
-      createdAt: user.createdAt.toISOString()
+      createdAt: user.created_at?.toISOString() || user.createdAt
     } as User;
   }
 
@@ -79,7 +79,7 @@ export class SqlServerStorage implements IStorage {
     const user = result.recordset[0];
     return {
       ...user,
-      createdAt: user.createdAt.toISOString()
+      createdAt: user.created_at?.toISOString() || user.createdAt
     } as User;
   }
 
@@ -100,7 +100,7 @@ export class SqlServerStorage implements IStorage {
     const newUser = result.recordset[0];
     return {
       ...newUser,
-      createdAt: newUser.createdAt.toISOString()
+      createdAt: newUser.created_at?.toISOString() || newUser.createdAt
     } as User;
   }
 
@@ -138,7 +138,7 @@ export class SqlServerStorage implements IStorage {
     const user = result.recordset[0];
     return {
       ...user,
-      createdAt: user.createdAt.toISOString()
+      createdAt: user.created_at?.toISOString() || user.createdAt
     } as User;
   }
 
@@ -288,7 +288,17 @@ export class SqlServerStorage implements IStorage {
       .input('id', sql.NVarChar, id)
       .query('SELECT * FROM projects WHERE id = @id');
 
-    return result.recordset[0] as Project | undefined;
+    if (!result.recordset[0]) return undefined;
+
+    const project = result.recordset[0];
+    return {
+      ...project,
+      startDate: project.start_date,
+      endDate: project.end_date,
+      createdBy: project.created_by,
+      createdAt: project.created_at?.toISOString() || project.createdAt,
+      updatedAt: project.updated_at?.toISOString() || project.updatedAt
+    } as Project;
   }
 
   async createProject(project: InsertProject): Promise<Project> {
@@ -301,12 +311,20 @@ export class SqlServerStorage implements IStorage {
       .input('endDate', sql.DateTime2, project.endDate ? new Date(project.endDate) : null)
       .input('createdBy', sql.NVarChar, project.createdBy)
       .query(`
-        INSERT INTO projects (name, description, status, startDate, endDate, createdBy)
+        INSERT INTO projects (name, description, status, start_date, end_date, created_by)
         OUTPUT INSERTED.*
         VALUES (@name, @description, @status, @startDate, @endDate, @createdBy)
       `);
 
-    return result.recordset[0] as Project;
+    const rawProject = result.recordset[0];
+    return {
+      ...rawProject,
+      startDate: rawProject.start_date,
+      endDate: rawProject.end_date,
+      createdBy: rawProject.created_by,
+      createdAt: rawProject.created_at?.toISOString() || rawProject.createdAt,
+      updatedAt: rawProject.updated_at?.toISOString() || rawProject.updatedAt
+    } as Project;
   }
 
   async updateProject(id: string, updates: Partial<InsertProject>): Promise<Project> {
@@ -328,20 +346,28 @@ export class SqlServerStorage implements IStorage {
     }
     if (updates.startDate) {
       request.input('startDate', sql.DateTime2, new Date(updates.startDate));
-      setParts.push('startDate = @startDate');
+      setParts.push('start_date = @startDate');
     }
     if (updates.endDate !== undefined) {
       request.input('endDate', sql.DateTime2, updates.endDate ? new Date(updates.endDate) : null);
-      setParts.push('endDate = @endDate');
+      setParts.push('end_date = @endDate');
     }
 
-    setParts.push('updatedAt = GETDATE()');
+    setParts.push('updated_at = GETDATE()');
     query += setParts.join(', ') + ' OUTPUT INSERTED.* WHERE id = @id';
 
     request.input('id', sql.NVarChar, id);
     const result = await request.query(query);
 
-    return result.recordset[0] as Project;
+    const rawProject = result.recordset[0];
+    return {
+      ...rawProject,
+      startDate: rawProject.start_date,
+      endDate: rawProject.end_date,
+      createdBy: rawProject.created_by,
+      createdAt: rawProject.created_at?.toISOString() || rawProject.createdAt,
+      updatedAt: rawProject.updated_at?.toISOString() || rawProject.updatedAt
+    } as Project;
   }
 
   async deleteProject(id: string): Promise<void> {
@@ -545,7 +571,18 @@ export class SqlServerStorage implements IStorage {
         VALUES (@id, @title, @description, @status, @priority, @taskTypeId, @projectId, @assigneeId, @startDate, @endDate, @expectedEndDate);
         SELECT * FROM tasks WHERE id = @id;
       `);
-    return result.recordset[0];
+    const rawTask = result.recordset[0];
+    return {
+      ...rawTask,
+      taskTypeId: rawTask.task_type_id,
+      projectId: rawTask.project_id,
+      assigneeId: rawTask.assignee_id,
+      startDate: rawTask.start_date,
+      endDate: rawTask.end_date,
+      expectedEndDate: rawTask.expected_end_date,
+      createdAt: rawTask.created_at?.toISOString() || rawTask.createdAt,
+      updatedAt: rawTask.updated_at?.toISOString() || rawTask.updatedAt
+    } as Task;
   }
 
   async updateTask(id: string, updates: Partial<InsertTask>): Promise<Task> {
@@ -621,12 +658,17 @@ export class SqlServerStorage implements IStorage {
 
     if (projectId) {
       request.input('projectId', sql.NVarChar, projectId);
-      query += ' WHERE projectId = @projectId';
+      query += ' WHERE project_id = @projectId';
     }
 
-    query += ' ORDER BY createdAt DESC';
+    query += ' ORDER BY created_at DESC';
     const result = await request.query(query);
-    return result.recordset as Milestone[];
+    return result.recordset.map((milestone: any) => ({
+      ...milestone,
+      projectId: milestone.project_id,
+      dueDate: milestone.due_date,
+      createdAt: milestone.created_at?.toISOString() || milestone.createdAt
+    })) as Milestone[];
   }
 
   async createMilestone(milestone: InsertMilestone): Promise<Milestone> {
@@ -637,12 +679,18 @@ export class SqlServerStorage implements IStorage {
       .input('projectId', sql.NVarChar, milestone.projectId)
       .input('dueDate', sql.DateTime2, new Date(milestone.dueDate))
       .query(`
-        INSERT INTO milestones (title, description, projectId, dueDate)
+        INSERT INTO milestones (title, description, project_id, due_date)
         OUTPUT INSERTED.*
         VALUES (@title, @description, @projectId, @dueDate)
       `);
 
-    return result.recordset[0] as Milestone;
+    const rawMilestone = result.recordset[0];
+    return {
+      ...rawMilestone,
+      projectId: rawMilestone.project_id,
+      dueDate: rawMilestone.due_date,
+      createdAt: rawMilestone.created_at?.toISOString() || rawMilestone.createdAt
+    } as Milestone;
   }
 
   // Comments
@@ -650,9 +698,15 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     const result = await request
       .input('ticketId', sql.NVarChar, ticketId)
-      .query('SELECT * FROM comments WHERE ticketId = @ticketId ORDER BY createdAt DESC');
+      .query('SELECT * FROM comments WHERE ticket_id = @ticketId ORDER BY created_at DESC');
 
-    return result.recordset as Comment[];
+    return result.recordset.map((comment: any) => ({
+      ...comment,
+      ticketId: comment.ticket_id,
+      authorId: comment.author_id,
+      createdAt: comment.created_at?.toISOString() || comment.createdAt,
+      updatedAt: comment.updated_at?.toISOString() || comment.updatedAt
+    })) as Comment[];
   }
 
   async createComment(comment: InsertComment): Promise<Comment> {
@@ -662,17 +716,24 @@ export class SqlServerStorage implements IStorage {
       .input('ticketId', sql.NVarChar, comment.ticketId)
       .input('authorId', sql.NVarChar, comment.authorId)
       .query(`
-        INSERT INTO comments (content, ticketId, authorId)
+        INSERT INTO comments (content, ticket_id, author_id)
         OUTPUT INSERTED.*
         VALUES (@content, @ticketId, @authorId)
       `);
 
-    return result.recordset[0] as Comment;
+    const rawComment = result.recordset[0];
+    return {
+      ...rawComment,
+      ticketId: rawComment.ticket_id,
+      authorId: rawComment.author_id,
+      createdAt: rawComment.created_at?.toISOString() || rawComment.createdAt,
+      updatedAt: rawComment.updated_at?.toISOString() || rawComment.updatedAt
+    } as Comment;
   }
 
   async updateComment(id: string, updates: Partial<InsertComment>): Promise<Comment> {
     const request = getDb().request();
-    let query = 'UPDATE comments SET updatedAt = GETDATE()';
+    let query = 'UPDATE comments SET updated_at = GETDATE()';
 
     if (updates.content) {
       request.input('content', sql.NVarChar, updates.content);
@@ -684,7 +745,14 @@ export class SqlServerStorage implements IStorage {
     request.input('id', sql.NVarChar, id);
     const result = await request.query(query);
 
-    return result.recordset[0] as Comment;
+    const rawComment = result.recordset[0];
+    return {
+      ...rawComment,
+      ticketId: rawComment.ticket_id,
+      authorId: rawComment.author_id,
+      createdAt: rawComment.created_at?.toISOString() || rawComment.createdAt,
+      updatedAt: rawComment.updated_at?.toISOString() || rawComment.updatedAt
+    } as Comment;
   }
 
   async deleteComment(id: string): Promise<void> {
@@ -699,9 +767,14 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     const result = await request
       .input('taskId', sql.NVarChar, taskId)
-      .query('SELECT * FROM taskDependencies WHERE taskId = @taskId ORDER BY createdAt DESC');
+      .query('SELECT * FROM task_dependencies WHERE task_id = @taskId ORDER BY created_at DESC');
 
-    return result.recordset as TaskDependency[];
+    return result.recordset.map((dependency: any) => ({
+      ...dependency,
+      taskId: dependency.task_id,
+      dependsOnTaskId: dependency.depends_on_task_id,
+      createdAt: dependency.created_at?.toISOString() || dependency.createdAt
+    })) as TaskDependency[];
   }
 
   async createTaskDependency(dependency: InsertTaskDependency): Promise<TaskDependency> {
@@ -710,19 +783,25 @@ export class SqlServerStorage implements IStorage {
       .input('taskId', sql.NVarChar, dependency.taskId)
       .input('dependsOnTaskId', sql.NVarChar, dependency.dependsOnTaskId)
       .query(`
-        INSERT INTO taskDependencies (taskId, dependsOnTaskId)
+        INSERT INTO task_dependencies (task_id, depends_on_task_id)
         OUTPUT INSERTED.*
         VALUES (@taskId, @dependsOnTaskId)
       `);
 
-    return result.recordset[0] as TaskDependency;
+    const rawDependency = result.recordset[0];
+    return {
+      ...rawDependency,
+      taskId: rawDependency.task_id,
+      dependsOnTaskId: rawDependency.depends_on_task_id,
+      createdAt: rawDependency.created_at?.toISOString() || rawDependency.createdAt
+    } as TaskDependency;
   }
 
   async deleteTaskDependency(id: string): Promise<void> {
     const request = getDb().request();
     await request
       .input('id', sql.NVarChar, id)
-      .query('DELETE FROM taskDependencies WHERE id = @id');
+      .query('DELETE FROM task_dependencies WHERE id = @id');
   }
 
   // Notifications
@@ -735,8 +814,11 @@ export class SqlServerStorage implements IStorage {
 
       return result.recordset.map((notification: any) => ({
         ...notification,
+        userId: notification.user_id,
+        entityType: notification.entity_type,
+        entityId: notification.entity_id,
         read: Boolean(notification.read),
-        createdAt: notification.created_at.toISOString()
+        createdAt: notification.created_at?.toISOString() || notification.createdAt
       })) as Notification[];
     } catch (error) {
       console.error('Error in getNotifications:', error);
@@ -754,12 +836,20 @@ export class SqlServerStorage implements IStorage {
       .input('entityType', sql.NVarChar, notification.entityType || null)
       .input('entityId', sql.NVarChar, notification.entityId || null)
       .query(`
-        INSERT INTO notifications (type, title, message, userId, entityType, entityId)
+        INSERT INTO notifications (type, title, message, user_id, entity_type, entity_id)
         OUTPUT INSERTED.*
         VALUES (@type, @title, @message, @userId, @entityType, @entityId)
       `);
 
-    return result.recordset[0] as Notification;
+    const rawNotification = result.recordset[0];
+    return {
+      ...rawNotification,
+      userId: rawNotification.user_id,
+      entityType: rawNotification.entity_type,
+      entityId: rawNotification.entity_id,
+      read: Boolean(rawNotification.read),
+      createdAt: rawNotification.created_at?.toISOString() || rawNotification.createdAt
+    } as Notification;
   }
 
   async markNotificationAsRead(id: string): Promise<void> {
@@ -773,7 +863,7 @@ export class SqlServerStorage implements IStorage {
     const request = getDb().request();
     await request
       .input('userId', sql.NVarChar, userId)
-      .query('UPDATE notifications SET read = 1 WHERE userId = @userId');
+      .query('UPDATE notifications SET read = 1 WHERE user_id = @userId');
   }
 
   async deleteNotification(id: string): Promise<void> {
