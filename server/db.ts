@@ -239,7 +239,7 @@ async function createSqlServerTables() {
     } else {
       // Verificar se user-1 existe especificamente
       const user1Check = await sqlServerPool.request()
-        .input('userId', sqlServerPool.constructor.NVarChar, 'user-1')
+        .input('userId', sql.NVarChar, 'user-1')
         .query('SELECT COUNT(*) as count FROM users WHERE id = @userId');
       
       if (user1Check.recordset[0].count === 0) {
