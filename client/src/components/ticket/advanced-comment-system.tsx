@@ -34,21 +34,24 @@ export default function AdvancedCommentSystem({ ticketId, currentUserId }: Advan
   const queryClient = useQueryClient();
 
   // Fetch comments for the ticket
-  const { data: comments = [], isLoading } = useQuery({
-    queryKey: ['/api/comments', ticketId],
+  const { data: comments = [], isLoading } = useQuery<CommentWithAuthor[]>({
+    queryKey: ['comments', ticketId],
     enabled: !!ticketId
   });
 
   // Create comment mutation
   const createCommentMutation = useMutation({
     mutationFn: async (comment: InsertComment) => {
-      return await apiRequest(`/api/comments`, {
+      const response = await fetch(`/api/tickets/${ticketId}/comments`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(comment)
       });
+      if (!response.ok) throw new Error('Failed to create comment');
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/comments', ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['comments', ticketId] });
       setNewComment("");
       toast({
         title: "Comentário adicionado",
@@ -67,13 +70,16 @@ export default function AdvancedCommentSystem({ ticketId, currentUserId }: Advan
   // Update comment mutation
   const updateCommentMutation = useMutation({
     mutationFn: async ({ id, content }: { id: string; content: string }) => {
-      return await apiRequest(`/api/comments/${id}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/comments/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content })
       });
+      if (!response.ok) throw new Error('Failed to update comment');
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/comments', ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['comments', ticketId] });
       setEditingComment(null);
       setEditContent("");
       toast({
@@ -93,12 +99,14 @@ export default function AdvancedCommentSystem({ ticketId, currentUserId }: Advan
   // Delete comment mutation
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
-      return await apiRequest(`/api/comments/${commentId}`, {
+      const response = await fetch(`/api/comments/${commentId}`, {
         method: 'DELETE'
       });
+      if (!response.ok) throw new Error('Failed to delete comment');
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/comments', ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['comments', ticketId] });
       toast({
         title: "Comentário removido",
         description: "Comentário foi removido com sucesso."
