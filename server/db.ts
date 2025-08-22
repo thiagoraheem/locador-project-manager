@@ -153,6 +153,12 @@ async function createSqlServerTables() {
         ALTER TABLE tasks ADD CONSTRAINT FK_tasks_task_type_id FOREIGN KEY (task_type_id) REFERENCES task_types(id);
       END
 
+      -- Adicionar coluna expected_end_date se ela não existir
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[tasks]') AND name = 'expected_end_date')
+      BEGIN
+        ALTER TABLE tasks ADD expected_end_date DATETIME2;
+      END
+
       IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'notifications')
       CREATE TABLE notifications (
         id NVARCHAR(50) PRIMARY KEY DEFAULT NEWID(),
