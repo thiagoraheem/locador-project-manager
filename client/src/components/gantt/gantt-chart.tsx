@@ -20,9 +20,11 @@ export default function GanttChart({ projects, tasks }: GanttChartProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'todo': return 'bg-gray-400';
+      case 'in_progress': return 'bg-blue-500';
+      case 'in_review': return 'bg-yellow-500';
+      case 'done': return 'bg-green-500';
       case 'planning': return 'bg-primary';
-      case 'in_progress': return 'bg-secondary';
-      case 'review': return 'bg-accent';
       case 'completed': return 'bg-success';
       case 'on_hold': return 'bg-gray-500';
       default: return 'bg-gray-400';
@@ -93,9 +95,15 @@ export default function GanttChart({ projects, tasks }: GanttChartProps) {
 
                 {/* Task Rows */}
                 {projectTasks.map((task) => {
-                  if (!task.startDate || !task.endDate) return null;
+                  // Para tarefas concluídas, usar endDate real
+                  // Para tarefas em andamento/planejamento, usar expectedEndDate
+                  const endDateToUse = task.status === 'done' && task.endDate 
+                    ? task.endDate 
+                    : task.expectedEndDate;
                   
-                  const taskPosition = calculateBarPosition(task.startDate.toString(), task.endDate.toString());
+                  if (!task.startDate || !endDateToUse) return null;
+                  
+                  const taskPosition = calculateBarPosition(task.startDate.toString(), endDateToUse.toString());
                   
                   return (
                     <div key={task.id} className="flex items-center ml-4" data-testid={`gantt-task-${task.id}`}>
@@ -126,24 +134,24 @@ export default function GanttChart({ projects, tasks }: GanttChartProps) {
           <div className="text-sm font-medium text-gray-700 mb-2">Status Legend:</div>
           <div className="flex flex-wrap gap-4 text-xs">
             <div className="flex items-center">
+              <div className="w-4 h-4 bg-gray-400 rounded mr-2"></div>
+              <span>A Fazer</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+              <span>Em Progresso</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-yellow-500 rounded mr-2"></div>
+              <span>Em Revisão</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
+              <span>Concluída</span>
+            </div>
+            <div className="flex items-center">
               <div className="w-4 h-4 bg-primary rounded mr-2"></div>
-              <span>Planning</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-secondary rounded mr-2"></div>
-              <span>In Progress</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-accent rounded mr-2"></div>
-              <span>Review</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-success rounded mr-2"></div>
-              <span>Completed</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-gray-500 rounded mr-2"></div>
-              <span>On Hold</span>
+              <span>Projetos</span>
             </div>
           </div>
         </div>
