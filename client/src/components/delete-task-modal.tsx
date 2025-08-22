@@ -74,16 +74,14 @@ export default function DeleteTaskModal({ open, onOpenChange, task }: DeleteTask
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-600">
-            <Trash2 className="h-5 w-5" />
-            Excluir Tarefa
-          </DialogTitle>
-          <DialogDescription>
-            Esta ação não pode ser desfeita. A tarefa será permanentemente removida do sistema.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-red-600">Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa
+              <strong className="font-medium"> "{task?.title}"</strong> e todos os dados associados.
+            </DialogDescription>
+          </DialogHeader>
 
         <div className="space-y-4">
           <Alert>

@@ -90,11 +90,11 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
     if (project) {
       const startDate = project.startDate ? new Date(project.startDate) : undefined;
       const endDate = project.endDate ? new Date(project.endDate) : undefined;
-      
+
       // Validate dates
       const validStartDate = startDate && !isNaN(startDate.getTime()) ? startDate : undefined;
       const validEndDate = endDate && !isNaN(endDate.getTime()) ? endDate : undefined;
-      
+
       form.reset({
         name: project.name,
         description: project.description || "",
@@ -109,7 +109,7 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
   const updateProjectMutation = useMutation({
     mutationFn: async (data: FormData) => {
       if (!project) throw new Error("Projeto não encontrado");
-      
+
       setIsSubmitting(true);
       const response = await apiRequest('PUT', `/api/projects/${project.id}`, {
         ...data,
@@ -165,9 +165,9 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
                 <FormItem>
                   <FormLabel>Nome do Projeto</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Digite o nome do projeto" 
-                      {...field} 
+                    <Input
+                      placeholder="Digite o nome do projeto"
+                      {...field}
                       data-testid="project-name-input"
                     />
                   </FormControl>
@@ -183,7 +183,7 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
                 <FormItem>
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Digite a descrição do projeto"
                       rows={3}
                       {...field}
@@ -307,16 +307,16 @@ export default function EditProjectModal({ open, onOpenChange, project }: EditPr
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => onOpenChange(false)}
                 data-testid="cancel-project-button"
               >
                 Cancelar
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isSubmitting}
                 className="bg-primary text-white hover:bg-primary/90"
                 data-testid="submit-project-button"

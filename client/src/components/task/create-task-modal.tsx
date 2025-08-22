@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -136,7 +137,7 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
       expectedEndDate: values.expectedEndDate ? values.expectedEndDate.toISOString().split('T')[0] : undefined,
       taskTypeId: values.taskTypeId || undefined,
     };
-    
+
     createTaskMutation.mutate(dataToSubmit);
   }
 
@@ -153,6 +154,9 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
       <DialogContent className="w-[95vw] max-w-2xl mx-4 md:mx-auto" data-testid="create-task-modal">
         <DialogHeader>
           <DialogTitle>Criar Nova Tarefa</DialogTitle>
+          <DialogDescription>
+              Preencha as informações da tarefa
+            </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

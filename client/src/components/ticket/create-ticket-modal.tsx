@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -100,6 +101,9 @@ export default function CreateTicketModal({ open, onOpenChange }: CreateTicketMo
       <DialogContent className="w-[95vw] max-w-md mx-4 md:mx-auto" data-testid="create-ticket-modal">
         <DialogHeader>
           <DialogTitle>Criar Novo Chamado</DialogTitle>
+          <DialogDescription>
+              Preencha as informações do chamado
+            </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

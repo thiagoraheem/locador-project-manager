@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -250,12 +251,12 @@ export default function EditTaskModal({ open, onOpenChange, task }: EditTaskModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Flag className="h-5 w-5" />
-            Editar Tarefa
-          </DialogTitle>
+          <DialogTitle>Editar Tarefa</DialogTitle>
+          <DialogDescription>
+            Atualize as informações da tarefa
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

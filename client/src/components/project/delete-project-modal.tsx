@@ -51,10 +51,10 @@ export default function DeleteProjectModal({ open, onOpenChange, project }: Dele
         apiRequest('GET', `/api/tasks?projectId=${project?.id}`),
         apiRequest('GET', `/api/tickets?projectId=${project?.id}`)
       ]);
-      
+
       const tasks = await tasksResponse.json();
       const tickets = await ticketsResponse.json();
-      
+
       return {
         tasksCount: tasks.length,
         ticketsCount: tickets.length
@@ -67,15 +67,15 @@ export default function DeleteProjectModal({ open, onOpenChange, project }: Dele
   const deleteProjectMutation = useMutation({
     mutationFn: async () => {
       if (!project) throw new Error("Projeto não encontrado");
-      
+
       setIsDeleting(true);
       const response = await apiRequest('DELETE', `/api/projects/${project.id}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || "Falha ao excluir projeto");
       }
-      
+
       return response;
     },
     onSuccess: () => {
@@ -84,12 +84,12 @@ export default function DeleteProjectModal({ open, onOpenChange, project }: Dele
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       queryClient.invalidateQueries({ queryKey: ['/api/tickets'] });
-      
+
       toast({
         title: "Projeto excluído com sucesso",
         description: `O projeto "${project?.name}" e todos os dados associados foram removidos.`,
       });
-      
+
       onOpenChange(false);
       // Redirect to projects page after deletion
       setLocation("/projects");
@@ -97,14 +97,14 @@ export default function DeleteProjectModal({ open, onOpenChange, project }: Dele
     onError: (error: any) => {
       const errorMessage = error.message || "Falha ao excluir projeto";
       let description = errorMessage;
-      
+
       // Handle specific error cases
       if (errorMessage.includes('dependenc')) {
         description = "Este projeto possui dependências ativas e não pode ser excluído no momento.";
       } else if (errorMessage.includes('permission')) {
         description = "Você não tem permissão para excluir este projeto.";
       }
-      
+
       toast({
         title: "Erro ao excluir projeto",
         description,
@@ -146,7 +146,7 @@ export default function DeleteProjectModal({ open, onOpenChange, project }: Dele
               <h3 className="text-sm font-medium text-red-800">
                 Impacto da Exclusão
               </h3>
-              
+
               {isLoadingStats ? (
                 <div className="mt-2 text-sm text-red-700">
                   <p>Carregando informações do projeto...</p>

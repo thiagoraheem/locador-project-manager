@@ -63,14 +63,12 @@ export default function DeleteTicketModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
-            Excluir Chamado
-          </DialogTitle>
-          <DialogDescription className="text-left">
-            Tem certeza que deseja excluir o chamado <strong>"{ticket.title}"</strong>?
+          <DialogTitle className="text-lg font-semibold text-red-600">Confirmar Exclusão</DialogTitle>
+          <DialogDescription>
+            Esta ação não pode ser desfeita. Isso excluirá permanentemente o ticket
+            <strong className="font-medium"> "{ticket?.title}"</strong> e todos os dados associados.
           </DialogDescription>
         </DialogHeader>
 
