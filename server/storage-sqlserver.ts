@@ -567,36 +567,66 @@ export class SqlServerStorage implements IStorage {
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
-    const request = getDb().request();
-    const result = await request
-      .input('id', sql.NVarChar, insertTask.id)
-      .input('title', sql.NVarChar, insertTask.title)
-      .input('description', sql.NVarChar, insertTask.description || null)
-      .input('status', sql.NVarChar, insertTask.status)
-      .input('priority', sql.NVarChar, insertTask.priority)
-      .input('taskTypeId', sql.NVarChar, insertTask.taskTypeId || null)
-      .input('projectId', sql.NVarChar, insertTask.projectId)
-      .input('assigneeId', sql.NVarChar, insertTask.assigneeId || null)
-      .input('startDate', sql.DateTime2, insertTask.startDate ? new Date(insertTask.startDate) : null)
-      .input('endDate', sql.DateTime2, insertTask.endDate ? new Date(insertTask.endDate) : null)
-      .input('expectedEndDate', sql.DateTime2, insertTask.expectedEndDate ? new Date(insertTask.expectedEndDate) : null)
-      .query(`
-        INSERT INTO tasks (id, title, description, status, priority, task_type_id, project_id, assignee_id, start_date, end_date, expected_end_date)
-        VALUES (@id, @title, @description, @status, @priority, @taskTypeId, @projectId, @assigneeId, @startDate, @endDate, @expectedEndDate);
-        SELECT * FROM tasks WHERE id = @id;
-      `);
-    const rawTask = result.recordset[0];
-    return {
-      ...rawTask,
-      taskTypeId: rawTask.task_type_id,
-      projectId: rawTask.project_id,
-      assigneeId: rawTask.assignee_id,
-      startDate: rawTask.start_date,
-      endDate: rawTask.end_date,
-      expectedEndDate: rawTask.expected_end_date,
-      createdAt: rawTask.created_at?.toISOString() || rawTask.createdAt,
-      updatedAt: rawTask.updated_at?.toISOString() || rawTask.updatedAt
-    } as Task;
+    try {
+      console.log('SqlServerStorage.createTask called with:', insertTask);
+      
+      const request = getDb().request();
+      
+      // Validar dados obrigatórios
+      if (!insertTask.id || !insertTask.title || !insertTask.projectId) {
+        throw new Error('Missing required fields: id, title, or projectId');
+      }
+      
+      console.log('Preparing SQL query with parameters...');
+      
+      const result = await request
+        .input('id', sql.NVarChar, insertTask.id)
+        .input('title', sql.NVarChar, insertTask.title)
+        .input('description', sql.NVarChar, insertTask.description || null)
+        .input('status', sql.NVarChar, insertTask.status || 'todo')
+        .input('priority', sql.NVarChar, insertTask.priority || 'medium')
+        .input('taskTypeId', sql.NVarChar, insertTask.taskTypeId || null)
+        .input('projectId', sql.NVarChar, insertTask.projectId)
+        .input('assigneeId', sql.NVarChar, insertTask.assigneeId || null)
+        .input('startDate', sql.DateTime2, insertTask.startDate ? new Date(insertTask.startDate) : null)
+        .input('endDate', sql.DateTime2, insertTask.endDate ? new Date(insertTask.endDate) : null)
+        .input('expectedEndDate', sql.DateTime2, insertTask.expectedEndDate ? new Date(insertTask.expectedEndDate) : null)
+        .query(`
+          INSERT INTO tasks (id, title, description, status, priority, task_type_id, project_id, assignee_id, start_date, end_date, expected_end_date)
+          VALUES (@id, @title, @description, @status, @priority, @taskTypeId, @projectId, @assigneeId, @startDate, @endDate, @expectedEndDate);
+          SELECT * FROM tasks WHERE id = @id;
+        `);
+      
+      console.log('SQL query executed successfully');
+      
+      if (!result.recordset[0]) {
+        throw new Error('Task was not created - no record returned');
+      }
+      
+      const rawTask = result.recordset[0];
+      const task = {
+        ...rawTask,
+        taskTypeId: rawTask.task_type_id,
+        projectId: rawTask.project_id,
+        assigneeId: rawTask.assignee_id,
+        startDate: rawTask.start_date,
+        endDate: rawTask.end_date,
+        expectedEndDate: rawTask.expected_end_date,
+        createdAt: rawTask.created_at?.toISOString() || rawTask.createdAt,
+        updatedAt: rawTask.updated_at?.toISOString() || rawTask.updatedAt
+      } as Task;
+      
+      console.log('Task created and formatted successfully:', task.id);
+      return task;
+      
+    } catch (error: any) {
+      console.error('Error in SqlServerStorage.createTask:', error);
+      console.error('Error message:', error.message);
+      console.error('Original error details:', error.originalError || error);
+      
+      // Re-throw com mais contexto
+      throw new Error(`Failed to create task in database: ${error.message}`);
+    }
   }
 
   async updateTask(id: string, updates: Partial<InsertTask>): Promise<Task> {

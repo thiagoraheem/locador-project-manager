@@ -218,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tickets", async (req, res) => {
     try {
       console.log('Creating ticket with body:', req.body);
-      
+
       // Get first user as default reporter
       const users = await storage.getUsers();
       const defaultUser = users[0];
@@ -243,10 +243,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertTicketSchema.parse(ticketData);
       console.log('Validated ticket data:', validatedData);
-      
+
       const ticket = await storage.createTicket(validatedData);
       console.log('Created ticket:', ticket);
-      
+
       res.status(201).json(ticket);
     } catch (error: any) {
       console.error('Error creating ticket:', error);
@@ -264,22 +264,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Updating ticket with ID:', req.params.id);
       console.log('Update data:', req.body);
-      
+
       // Clean null values
       const cleanData = {
         ...req.body,
         projectId: req.body.projectId === null ? undefined : req.body.projectId,
         assigneeId: req.body.assigneeId === null ? undefined : req.body.assigneeId,
       };
-      
+
       console.log('Cleaned data:', cleanData);
-      
+
       const validatedData = insertTicketSchema.partial().parse(cleanData);
       console.log('Validated data:', validatedData);
-      
+
       const ticket = await storage.updateTicket(req.params.id, validatedData);
       console.log('Updated ticket:', ticket);
-      
+
       res.json(ticket);
     } catch (error: any) {
       console.error('Error updating ticket:', error);
@@ -328,27 +328,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks", async (req, res) => {
     try {
-      // Clean and prepare task data
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      console.log('Creating task with data:', req.body);
+
+      // Validar os dados recebidos
+      const parsed = insertTaskSchema.parse(req.body);
+      console.log('Task data parsed successfully:', parsed);
+
+      // Generate task ID
+      const taskId = 'task_' + Math.random().toString(36).substr(2, 15);
+
+      // Preparar dados para inserção
       const taskData = {
-        ...req.body,
-        status: req.body.status || "todo",
-        priority: req.body.priority || "medium",
-        description:
-          req.body.description === null ? undefined : req.body.description,
-        assigneeId:
-          req.body.assigneeId === null ? undefined : req.body.assigneeId,
+        ...parsed,
+        id: taskId,
+        priority: parsed.priority || 'medium', // Default priority se não fornecido
       };
 
-      const validatedData = insertTaskSchema.parse(taskData);
-      const task = await storage.createTask(validatedData);
+      console.log('Inserting task with data:', taskData);
+
+      const task = await storage.createTask(taskData);
+
+      console.log('Task created successfully:', task.id);
       res.status(201).json(task);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error creating task:', error);
+      console.error('Error details:', error.message);
+      console.error('Stack trace:', error.stack);
+
       if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ message: "Invalid task data", errors: error.errors });
+        console.log('Validation errors:', error.errors);
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
       }
-      res.status(500).json({ message: "Failed to create task" });
+
+      res.status(500).json({ 
+        message: "Failed to create task",
+        details: error.message 
+      });
     }
   });
 
@@ -415,14 +437,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Creating comment with body:', req.body);
       console.log('TicketId from params:', req.params.ticketId);
-      
+
       // Verificar se o ticket existe
       const ticket = await storage.getTicket(req.params.ticketId);
       if (!ticket) {
         console.error('Ticket not found:', req.params.ticketId);
         return res.status(404).json({ message: "Ticket not found" });
       }
-      
+
       // Verificar se o usuário existe
       const user = await storage.getUser(req.body.authorId);
       if (!user) {
@@ -447,17 +469,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: "User not found" });
         }
       }
-      
+
       const commentData = {
         content: req.body.content,
         ticketId: req.params.ticketId,
         authorId: req.body.authorId,
       };
-      
+
       console.log('Prepared comment data:', commentData);
       const validatedData = insertCommentSchema.parse(commentData);
       console.log('Validated comment data:', validatedData);
-      
+
       const comment = await storage.createComment(validatedData);
       console.log('Created comment:', comment);
       res.status(201).json(comment);
@@ -942,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/search", async (req, res) => {
     try {
       const { q, type = 'all', limit = '20', offset = '0' } = req.query;
-      
+
       if (!q || typeof q !== 'string' || q.trim().length < 2) {
         return res.json({ 
           results: [], 
@@ -950,21 +972,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasMore: false 
         });
       }
-      
+
       const searchType = ['all', 'projects', 'tickets', 'tasks'].includes(type as string) 
         ? (type as 'all' | 'projects' | 'tickets' | 'tasks') 
         : 'all';
-      
+
       const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10) || 20));
       const offsetNum = Math.max(0, parseInt(offset as string, 10) || 0);
-      
+
       const searchResults = await storage.globalSearch(
         q.trim(),
         searchType,
         limitNum,
         offsetNum
       );
-      
+
       res.json(searchResults);
     } catch (error) {
       console.error('Error in /api/search:', error);
@@ -981,23 +1003,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/productivity", async (req, res) => {
     try {
       const { startDate, endDate, userId, projectId } = req.query;
-      
+
       if (!startDate || !endDate) {
         return res.status(400).json({ 
           message: "startDate and endDate are required" 
         });
       }
-      
+
       const start = new Date(startDate as string);
       const end = new Date(endDate as string);
-      
+
       const report = await storage.getProductivityReport(
         start,
         end,
         userId as string | undefined,
         projectId as string | undefined
       );
-      
+
       res.json(report);
     } catch (error) {
       console.error('Error in /api/reports/productivity:', error);
@@ -1008,18 +1030,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/project-status", async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
-      
+
       if (!startDate || !endDate) {
         return res.status(400).json({ 
           message: "startDate and endDate are required" 
         });
       }
-      
+
       const start = new Date(startDate as string);
       const end = new Date(endDate as string);
-      
+
       const report = await storage.getProjectStatusReport(start, end);
-      
+
       res.json(report);
     } catch (error) {
       console.error('Error in /api/reports/project-status:', error);
@@ -1030,23 +1052,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/time-tracking", async (req, res) => {
     try {
       const { startDate, endDate, userId, projectId } = req.query;
-      
+
       if (!startDate || !endDate) {
         return res.status(400).json({ 
           message: "startDate and endDate are required" 
         });
       }
-      
+
       const start = new Date(startDate as string);
       const end = new Date(endDate as string);
-      
+
       const report = await storage.getTimeTrackingReport(
         start,
         end,
         userId as string | undefined,
         projectId as string | undefined
       );
-      
+
       res.json(report);
     } catch (error) {
       console.error('Error in /api/reports/time-tracking:', error);

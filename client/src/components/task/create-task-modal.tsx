@@ -278,6 +278,7 @@ export function CreateTaskModal({ projectId, children }: CreateTaskModalProps) {
                     <SelectContent>
                       <SelectItem value="todo">A Fazer</SelectItem>
                       <SelectItem value="in_progress">Em Progresso</SelectItem>
+                      <SelectItem value="in_review">Em Revisão</SelectItem>
                       <SelectItem value="completed">Concluída</SelectItem>
                     </SelectContent>
                   </Select>
