@@ -22,13 +22,14 @@ import Calendar from "@/pages/calendar";
 import Sidebar from "@/components/layout/sidebar";
 import { MobileNavigation } from "@/components/responsive/mobile-navigation";
 import { SkipLink } from "@/components/accessibility/skip-link";
+import Profile from "@/pages/profile";
 
 function Router() {
   return (
     <Switch>
       {/* Rota de login pública */}
       <Route path="/login" component={LoginPage} />
-      
+
       {/* Todas as outras rotas protegidas */}
       <Route>
         <AuthenticatedApp />
@@ -84,6 +85,8 @@ function AuthenticatedApp() {
             <Route path="/reports" component={() => <PrivateRoute><Reports /></PrivateRoute>} />
             <Route path="/admin" component={() => <PrivateRoute requireRole="admin"><Admin /></PrivateRoute>} />
             <Route path="/calendar" component={() => <PrivateRoute><Calendar /></PrivateRoute>} />
+            <Route path="/profile" component={() => <PrivateRoute><Profile /></PrivateRoute>} />
+
             <Route component={NotFound} />
           </Switch>
         </main>

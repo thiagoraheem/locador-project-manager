@@ -237,14 +237,6 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
             <Search className="w-5 h-5" aria-hidden="true" />
           </Button>
           <Notifications userId="user-1" />
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="p-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            aria-label="Perfil do usuário"
-          >
-            <User className="w-5 h-5" aria-hidden="true" />
-          </Button>
         </div>
       </header>
 

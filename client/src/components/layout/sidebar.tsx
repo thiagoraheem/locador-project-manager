@@ -12,12 +12,16 @@ import {
   FileText,
   Settings,
   Menu,
-  X
+  X,
+  LogOut,
+  UserCog
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/use-auth";
 import type { SelectTask, SelectTicket } from "@shared/schema";
 
 const getNavigation = (role?: string, taskCount?: number, ticketCount?: number) => {
@@ -48,6 +52,7 @@ interface SidebarProps {
 export default function Sidebar({ role, 'aria-label': ariaLabel }: SidebarProps = {}) {
   const [location] = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, logout } = useAuth();
   
   // Buscar dados para badges dinâmicos
   const { data: tasks = [] } = useQuery<SelectTask[]>({
@@ -190,20 +195,64 @@ export default function Sidebar({ role, 'aria-label': ariaLabel }: SidebarProps 
         "border-t border-gray-200",
         isCollapsed ? "p-2" : "p-4"
       )}>
-        <div className={cn(
-          "flex items-center",
-          isCollapsed ? "justify-center" : "space-x-3"
-        )}>
-          <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
-            <User className="text-white text-sm" />
-          </div>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate" data-testid="user-name">Gerente de Projeto</p>
-              <p className="text-xs text-gray-500 truncate" data-testid="user-role">Admin</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="ghost" 
+              className={cn(
+                "w-full justify-start h-auto p-0 hover:bg-gray-100",
+                isCollapsed ? "justify-center" : "space-x-3"
+              )}
+              data-testid="user-menu-trigger"
+            >
+              <div className={cn(
+                "flex items-center",
+                isCollapsed ? "justify-center" : "space-x-3 w-full"
+              )}>
+                <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="text-white text-sm" />
+                </div>
+                {!isCollapsed && (
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-medium truncate" data-testid="user-name">
+                      {user?.name || 'Usuário'}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate capitalize" data-testid="user-role">
+                      {user?.role === 'admin' ? 'Administrador' : 
+                       user?.role === 'manager' ? 'Gerente' : 'Membro'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent 
+            align={isCollapsed ? "center" : "start"} 
+            className="w-56"
+            data-testid="user-menu-content"
+          >
+            <div className="px-2 py-1.5">
+              <p className="text-sm font-medium">{user?.name || 'Usuário'}</p>
+              <p className="text-xs text-gray-500">{user?.email}</p>
             </div>
-          )}
-        </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="flex items-center cursor-pointer">
+                <UserCog className="mr-2 h-4 w-4" />
+                <span>Meu Perfil</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={() => logout()}
+              className="flex items-center cursor-pointer text-red-600 focus:text-red-600"
+              data-testid="logout-button"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Sair</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   );

@@ -9,6 +9,23 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-i
 const JWT_EXPIRES_IN = '7d';
 const REFRESH_TOKEN_EXPIRES_IN = '30d';
 
+// Assuming User interface and sqlConnection are defined elsewhere in your project
+// Example:
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  name: string;
+  password?: string; // Password might be optional depending on context
+  role: 'admin' | 'manager' | 'member' | 'viewer';
+  status?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Assume sqlConnection is initialized elsewhere
+declare const sqlConnection: Promise<sql.ConnectionPool>;
+
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -33,16 +50,16 @@ export interface LoginCredentials {
 // Funções utilitárias para JWT
 export function generateAccessToken(userId: string): string {
   return jwt.sign(
-    { userId, type: 'access' } as TokenPayload, 
-    JWT_SECRET, 
+    { userId, type: 'access' } as TokenPayload,
+    JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
 }
 
 export function generateRefreshToken(userId: string): string {
   return jwt.sign(
-    { userId, type: 'refresh' } as TokenPayload, 
-    JWT_SECRET, 
+    { userId, type: 'refresh' } as TokenPayload,
+    JWT_SECRET,
     { expiresIn: REFRESH_TOKEN_EXPIRES_IN }
   );
 }
@@ -94,11 +111,11 @@ export async function authenticateUser(email: string, password: string) {
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     // Buscar token do cookie ou header Authorization
-    const token = req.cookies?.authToken || 
-                 (req.headers.authorization?.startsWith('Bearer ') 
-                   ? req.headers.authorization.substring(7) 
+    const token = req.cookies?.authToken ||
+                 (req.headers.authorization?.startsWith('Bearer ')
+                   ? req.headers.authorization.substring(7)
                    : null);
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Token de acesso requerido' });
     }
@@ -137,11 +154,11 @@ export function requireRole(roles: string[]) {
     if (!req.user) {
       return res.status(401).json({ error: 'Usuário não autenticado' });
     }
-    
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Permissão insuficiente' });
     }
-    
+
     next();
   };
 }
@@ -153,12 +170,12 @@ export function requireProjectPermission(permission: 'read' | 'write' | 'admin')
       if (!req.user) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
-      
+
       // Admins têm acesso total
       if (req.user.role === 'admin') {
         return next();
       }
-      
+
       // For now, just pass through - implement proper project permissions later
       next();
     } catch (error) {
@@ -171,11 +188,11 @@ export function requireProjectPermission(permission: 'read' | 'write' | 'admin')
 // Middleware opcional de autenticação (não bloqueia se não tiver token)
 export async function optionalAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const token = req.cookies?.authToken || 
-                 (req.headers.authorization?.startsWith('Bearer ') 
-                   ? req.headers.authorization.substring(7) 
+    const token = req.cookies?.authToken ||
+                 (req.headers.authorization?.startsWith('Bearer ')
+                   ? req.headers.authorization.substring(7)
                    : null);
-    
+
     if (token) {
       const decoded = verifyToken(token);
       if (decoded && decoded.type === 'access') {
@@ -191,10 +208,67 @@ export async function optionalAuth(req: AuthenticatedRequest, res: Response, nex
         }
       }
     }
-    
+
     next();
   } catch (error) {
     // Em caso de erro, apenas continue sem definir req.user
     next();
+  }
+}
+
+// Adicionar função para buscar usuário por ID e para atualizar perfil do usuário
+export async function getUserById(id: string): Promise<User | null> {
+  try {
+    const pool = await sqlConnection;
+    const request = pool.request();
+
+    const result = await request
+      .input('id', sql.NVarChar, id)
+      .query('SELECT * FROM users WHERE id = @id');
+
+    if (result.recordset.length === 0) {
+      return null;
+    }
+
+    const user = result.recordset[0];
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      password: user.password,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+  } catch (error) {
+    console.error('Erro ao buscar usuário por ID:', error);
+    return null;
+  }
+}
+
+export async function updateUserProfile(userId: string, updateData: { name: string; email: string; password?: string }): Promise<void> {
+  try {
+    const pool = await sqlConnection;
+    const request = pool.request();
+
+    let query = 'UPDATE users SET name = @name, email = @email, updatedAt = GETDATE() WHERE id = @id';
+
+    request
+      .input('id', sql.NVarChar, userId)
+      .input('name', sql.NVarChar, updateData.name)
+      .input('email', sql.NVarChar, updateData.email);
+
+    // Se tem nova senha, incluir no update
+    if (updateData.password) {
+      query = 'UPDATE users SET name = @name, email = @email, password = @password, updatedAt = GETDATE() WHERE id = @id';
+      request.input('password', sql.NVarChar, updateData.password);
+    }
+
+    await request.query(query);
+  } catch (error) {
+    console.error('Erro ao atualizar perfil do usuário:', error);
+    throw error;
   }
 }
