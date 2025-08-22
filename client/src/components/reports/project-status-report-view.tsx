@@ -23,13 +23,13 @@ export function ProjectStatusReportView({ data }: ProjectStatusReportViewProps) 
   // Dados para gráfico de barras de progresso
   const progressChartData = data.projects.map(project => ({
     name: project.name.length > 15 ? project.name.substring(0, 15) + '...' : project.name,
-    progress: project.progress,
+    progress: isNaN(project.progress) ? 0 : project.progress,
     status: getStatusDisplayName(project.status),
     isDelayed: project.isDelayed
   }));
 
-  const onTimePercentage = (data.projectsOnTime / data.totalProjects) * 100;
-  const delayedPercentage = (data.projectsDelayed / data.totalProjects) * 100;
+  const onTimePercentage = data.totalProjects > 0 ? ((data.projectsOnTime / data.totalProjects) * 100) : 0;
+  const delayedPercentage = data.totalProjects > 0 ? ((data.projectsDelayed / data.totalProjects) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -59,7 +59,7 @@ export function ProjectStatusReportView({ data }: ProjectStatusReportViewProps) 
               <div>
                 <p className="text-sm text-gray-600">No Prazo</p>
                 <p className="text-2xl font-bold text-gray-900">{data.projectsOnTime}</p>
-                <p className="text-xs text-gray-500">{onTimePercentage.toFixed(1)}% do total</p>
+                <p className="text-xs text-gray-500">{Number.isFinite(onTimePercentage) ? onTimePercentage.toFixed(1) : 0}% do total</p>
               </div>
             </div>
           </CardContent>
@@ -74,7 +74,7 @@ export function ProjectStatusReportView({ data }: ProjectStatusReportViewProps) 
               <div>
                 <p className="text-sm text-gray-600">Atrasados</p>
                 <p className="text-2xl font-bold text-gray-900">{data.projectsDelayed}</p>
-                <p className="text-xs text-gray-500">{delayedPercentage.toFixed(1)}% do total</p>
+                <p className="text-xs text-gray-500">{Number.isFinite(delayedPercentage) ? delayedPercentage.toFixed(1) : 0}% do total</p>
               </div>
             </div>
           </CardContent>
@@ -88,7 +88,7 @@ export function ProjectStatusReportView({ data }: ProjectStatusReportViewProps) 
               </div>
               <div>
                 <p className="text-sm text-gray-600">Duração Média</p>
-                <p className="text-2xl font-bold text-gray-900">{data.averageProjectDuration}</p>
+                <p className="text-2xl font-bold text-gray-900">{Number.isFinite(data.averageProjectDuration) ? Math.round(data.averageProjectDuration) : 0}</p>
                 <p className="text-xs text-gray-500">dias</p>
               </div>
             </div>

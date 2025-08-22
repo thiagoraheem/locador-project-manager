@@ -1114,22 +1114,22 @@ export class SqlServerStorage implements IStorage {
       .input('startDate', sql.DateTime, startDate)
       .input('endDate', sql.DateTime, endDate);
     
-    let whereClause = 'WHERE created_at BETWEEN @startDate AND @endDate';
+    let whereClause = 'WHERE t.created_at BETWEEN @startDate AND @endDate';
     if (userId) {
       request.input('userId', sql.NVarChar, userId);
-      whereClause += ' AND assignee_id = @userId';
+      whereClause += ' AND t.assignee_id = @userId';
     }
     if (projectId) {
       request.input('projectId', sql.NVarChar, projectId);
-      whereClause += ' AND project_id = @projectId';
+      whereClause += ' AND t.project_id = @projectId';
     }
     
     // Simular horas baseado em tarefas (estimativa: cada tarefa = 8 horas)
     const totalHoursQuery = `
       SELECT 
         COUNT(*) * 8 as totalHours,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) * 8 as billableHours
-      FROM tasks 
+        COUNT(CASE WHEN t.status = 'completed' THEN 1 END) * 8 as billableHours
+      FROM tasks t
       ${whereClause}
     `;
     
@@ -1142,7 +1142,7 @@ export class SqlServerStorage implements IStorage {
         p.name as projectName,
         COUNT(t.id) * 8 as hours
       FROM projects p
-      LEFT JOIN tasks t ON p.id = t.project_id ${whereClause.replace('WHERE', 'AND')}
+      LEFT JOIN tasks t ON p.id = t.project_id ${whereClause.replace('WHERE t.created_at', 'AND t.created_at')}
       GROUP BY p.id, p.name
       HAVING COUNT(t.id) > 0
       ORDER BY hours DESC
@@ -1157,7 +1157,7 @@ export class SqlServerStorage implements IStorage {
         u.name as memberName,
         COUNT(t.id) * 8 as hours
       FROM users u
-      LEFT JOIN tasks t ON u.id = t.assignee_id ${whereClause.replace('WHERE', 'AND')}
+      LEFT JOIN tasks t ON u.id = t.assignee_id ${whereClause.replace('WHERE t.created_at', 'AND t.created_at')}
       GROUP BY u.id, u.name
       HAVING COUNT(t.id) > 0
       ORDER BY hours DESC
