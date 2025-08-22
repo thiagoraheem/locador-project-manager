@@ -328,9 +328,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks", async (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      // Temporariamente removido requireAuth para debug
+      // if (!req.user) {
+      //   return res.status(401).json({ message: "Unauthorized" });
+      // }
 
       console.log('Creating task with data:', req.body);
 

@@ -275,6 +275,8 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
+  status: z.enum(["todo", "in_progress", "in_review", "done"]).default("todo"),
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   expectedEndDate: z.string().optional(),
