@@ -1,6 +1,7 @@
 
-const sql = require('mssql');
-const bcrypt = require('bcryptjs');
+import sql from 'mssql';
+import bcrypt from 'bcryptjs';
+import 'dotenv/config';
 
 // Configuração do banco (mesma do db.ts)
 const sqlServerConfig = {
