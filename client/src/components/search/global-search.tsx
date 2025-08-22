@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, X, FolderKanban, CheckSquare, Ticket, Clock, User, Calendar } from 'lucide-react';
+import { Search, X, FolderKanban, CheckSquare, Ticket, Clock, User, Calendar, Filter } from 'lucide-react';
+import { useDebounce } from '@/hooks/use-debounce';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +23,14 @@ interface SearchResult {
   projectName?: string;
 }
 
+interface SearchResponse {
+  results: SearchResult[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+type SearchType = 'all' | 'projects' | 'tasks' | 'tickets';
+
 interface GlobalSearchProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,79 +40,64 @@ interface GlobalSearchProps {
 export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedType, setSelectedType] = useState<SearchType>('all');
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  
+  // Debounce para evitar muitas requisições
+  const debouncedQuery = useDebounce(query, 300);
 
-  // Simular dados de busca (em produção, viria da API)
-  const { data: results = [], isLoading } = useQuery<SearchResult[]>({
-    queryKey: ['/api/search', query],
+  // Busca com dados reais da API
+  const { data: searchResponse, isLoading, error } = useQuery<SearchResponse>({
+    queryKey: ['/api/search', debouncedQuery, selectedType],
     queryFn: async () => {
-      if (!query.trim()) return [];
+      if (!debouncedQuery.trim() || debouncedQuery.trim().length < 2) {
+        return { results: [], totalCount: 0, hasMore: false };
+      }
       
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const params = new URLSearchParams({
+        q: debouncedQuery.trim(),
+        type: selectedType,
+        limit: '20',
+        offset: '0'
+      });
       
-      // Dados simulados
-      const mockResults: SearchResult[] = [
-        {
-          id: '1',
-          type: 'project',
-          title: 'Sistema de Locação',
-          description: 'Desenvolvimento do sistema principal de locação de equipamentos',
-          status: 'em_progresso',
-          createdAt: '2024-01-15T10:00:00Z'
-        },
-        {
-          id: '2',
-          type: 'task',
-          title: 'Implementar autenticação',
-          description: 'Criar sistema de login e registro de usuários',
-          status: 'concluida',
-          priority: 'alta',
-          assignedTo: 'João Silva',
-          projectName: 'Sistema de Locação',
-          createdAt: '2024-01-16T14:30:00Z'
-        },
-        {
-          id: '3',
-          type: 'ticket',
-          title: 'Bug no formulário de cadastro',
-          description: 'Campos não estão sendo validados corretamente',
-          status: 'aberto',
-          priority: 'media',
-          createdAt: '2024-01-17T09:15:00Z'
-        },
-        {
-          id: '4',
-          type: 'project',
-          title: 'Dashboard Analytics',
-          description: 'Painel de controle com métricas e relatórios',
-          status: 'planejamento',
-          createdAt: '2024-01-18T11:45:00Z'
-        },
-        {
-          id: '5',
-          type: 'task',
-          title: 'Criar componentes de gráficos',
-          description: 'Desenvolver componentes reutilizáveis para visualização de dados',
-          status: 'em_progresso',
-          priority: 'alta',
-          assignedTo: 'Maria Santos',
-          projectName: 'Dashboard Analytics',
-          createdAt: '2024-01-19T16:20:00Z'
-        }
-      ];
+      const response = await fetch(`/api/search?${params}`);
+      if (!response.ok) {
+        throw new Error('Falha na busca');
+      }
       
-      // Filtrar resultados baseado na query
-      return mockResults.filter(item => 
-        item.title.toLowerCase().includes(query.toLowerCase()) ||
-        item.description?.toLowerCase().includes(query.toLowerCase()) ||
-        item.projectName?.toLowerCase().includes(query.toLowerCase())
-      );
+      return response.json();
     },
-    enabled: query.trim().length > 0
+    enabled: debouncedQuery.trim().length >= 2,
+    staleTime: 30 * 1000, // Cache por 30 segundos
+    retry: 2
   });
+  
+  const results = searchResponse?.results || [];
 
+  // Carregar histórico do localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('search-history');
+    if (savedHistory) {
+      try {
+        setSearchHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.warn('Erro ao carregar histórico de busca:', e);
+      }
+    }
+  }, []);
+  
+  // Salvar busca no histórico
+  const saveToHistory = (searchTerm: string) => {
+    if (searchTerm.trim().length < 2) return;
+    
+    const newHistory = [searchTerm, ...searchHistory.filter(h => h !== searchTerm)].slice(0, 10);
+    setSearchHistory(newHistory);
+    localStorage.setItem('search-history', JSON.stringify(newHistory));
+  };
+  
   // Focus no input quando abrir
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -116,6 +110,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
     if (!isOpen) {
       setQuery('');
       setSelectedIndex(0);
+      setSelectedType('all');
     }
   }, [isOpen]);
 
@@ -161,9 +156,47 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
   }, [isOpen, results, selectedIndex, onClose]);
 
   const handleSelect = (result: SearchResult) => {
+    saveToHistory(query);
     onSelect?.(result);
     onClose();
   };
+  
+  // Destacar termos de busca
+  const highlightText = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <mark key={index} className="bg-yellow-200 px-1 rounded">
+          {part}
+        </mark>
+      ) : part
+    );
+  };
+  
+  // Tipos disponíveis para filtro
+  const searchTypes: { value: SearchType; label: string; icon: React.ReactNode }[] = [
+    { value: 'all', label: 'Todos', icon: <Search className="w-4 h-4" /> },
+    { value: 'projects', label: 'Projetos', icon: <FolderKanban className="w-4 h-4" /> },
+    { value: 'tasks', label: 'Tarefas', icon: <CheckSquare className="w-4 h-4" /> },
+    { value: 'tickets', label: 'Chamados', icon: <Ticket className="w-4 h-4" /> },
+  ];
+  
+  // Resultados agrupados por tipo
+  const groupedResults = useMemo(() => {
+    const groups = results.reduce((acc, result) => {
+      if (!acc[result.type]) {
+        acc[result.type] = [];
+      }
+      acc[result.type].push(result);
+      return acc;
+    }, {} as Record<string, SearchResult[]>);
+    
+    return groups;
+  }, [results]);
 
   const getTypeIcon = (type: SearchResult['type']) => {
     switch (type) {
@@ -235,7 +268,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
     >
       <FocusTrap isActive={isOpen}>
         <Card className="w-full max-w-2xl mx-4 max-h-[70vh] overflow-hidden">
-        <div className="p-4 border-b">
+        <div className="p-4 border-b space-y-3">
           <div className="flex items-center space-x-2">
             <Search className="w-5 h-5 text-gray-400" aria-hidden="true" />
             <Input
@@ -261,8 +294,28 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
               <X className="w-4 h-4" aria-hidden="true" />
             </Button>
           </div>
+          
+          {/* Filtros por tipo */}
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-gray-400" aria-hidden="true" />
+            <div className="flex space-x-1">
+              {searchTypes.map((type) => (
+                <Button
+                  key={type.value}
+                  variant={selectedType === type.value ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setSelectedType(type.value)}
+                  className="h-7 px-2 text-xs"
+                >
+                  {type.icon}
+                  <span className="ml-1">{type.label}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+          
           <div id="search-instructions" className="sr-only">
-            Use as setas para navegar pelos resultados e Enter para selecionar
+            Use as setas para navegar pelos resultados e Enter para selecionar. Use Ctrl+K para abrir a busca.
           </div>
         </div>
 
@@ -273,10 +326,37 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
           aria-label="Resultados da busca"
         >
           {query.trim() === '' ? (
-            <div className="p-8 text-center text-gray-500" role="status">
-              <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" aria-hidden="true" />
-              <p id="search-title">Digite para buscar projetos, tarefas e chamados</p>
-              <p className="text-sm mt-2" id="search-description">Use ↑↓ para navegar e Enter para selecionar</p>
+            <div className="p-6">
+              <div className="text-center text-gray-500 mb-6">
+                <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" aria-hidden="true" />
+                <p id="search-title">Digite para buscar projetos, tarefas e chamados</p>
+                <p className="text-sm mt-2" id="search-description">Use ↑↓ para navegar, Enter para selecionar e Ctrl+K para abrir</p>
+              </div>
+              
+              {/* Histórico de buscas */}
+              {searchHistory.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Buscas recentes</h4>
+                  <div className="space-y-1">
+                    {searchHistory.slice(0, 5).map((historyItem, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setQuery(historyItem)}
+                        className="w-full text-left p-2 text-sm text-gray-600 hover:bg-gray-50 rounded flex items-center space-x-2"
+                      >
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span>{historyItem}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center text-red-500" role="status">
+              <X className="w-12 h-12 mx-auto mb-4 text-red-300" aria-hidden="true" />
+              <p>Erro na busca</p>
+              <p className="text-sm mt-2">Tente novamente em alguns instantes</p>
             </div>
           ) : isLoading ? (
             <div className="p-4 space-y-3" role="status" aria-live="polite" aria-label="Carregando resultados">
@@ -297,77 +377,176 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
               <p className="text-sm mt-2">Tente usar termos diferentes</p>
             </div>
           ) : (
-            <div className="divide-y">
-              {results.map((result, index) => (
-                <div
-                  key={result.id}
-                  id={`search-result-${index}`}
-                  className={cn(
-                    'p-4 cursor-pointer transition-colors',
-                    index === selectedIndex ? 'bg-gray-50' : 'hover:bg-gray-50'
-                  )}
-                  onClick={() => handleSelect(result)}
-                  role="option"
-                  aria-selected={index === selectedIndex}
-                  tabIndex={-1}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className={cn('p-2 rounded-lg', getTypeColor(result.type))}>
-                      {getTypeIcon(result.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-medium text-gray-900 truncate">
-                          {result.title}
+            <div>
+              {selectedType === 'all' ? (
+                // Resultados agrupados por tipo
+                <div>
+                  {Object.entries(groupedResults).map(([type, typeResults]) => (
+                    <div key={type}>
+                      <div className="px-4 py-2 bg-gray-50 border-b">
+                        <h3 className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                          {getTypeIcon(type as SearchResult['type'])}
+                          <span>
+                            {type === 'project' ? 'Projetos' : 
+                             type === 'task' ? 'Tarefas' : 'Chamados'} 
+                            ({typeResults.length})
+                          </span>
                         </h3>
-                        <Badge variant="secondary" className="text-xs">
-                          {result.type === 'project' ? 'Projeto' : 
-                           result.type === 'task' ? 'Tarefa' : 'Chamado'}
-                        </Badge>
                       </div>
-                      
-                      {result.description && (
-                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                          {result.description}
-                        </p>
+                      {typeResults.map((result, index) => {
+                        const globalIndex = results.findIndex(r => r.id === result.id);
+                        return (
+                          <div
+                            key={result.id}
+                            id={`search-result-${globalIndex}`}
+                            className={cn(
+                              'p-4 cursor-pointer transition-colors border-b last:border-b-0',
+                              globalIndex === selectedIndex ? 'bg-blue-50' : 'hover:bg-gray-50'
+                            )}
+                            onClick={() => handleSelect(result)}
+                            role="option"
+                            aria-selected={globalIndex === selectedIndex}
+                            tabIndex={-1}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className={cn('p-2 rounded-lg', getTypeColor(result.type))}>
+                                {getTypeIcon(result.type)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <h3 className="font-medium text-gray-900">
+                                    {highlightText(result.title, debouncedQuery)}
+                                  </h3>
+                                </div>
+                                
+                                {result.description && (
+                                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                                    {highlightText(result.description, debouncedQuery)}
+                                  </p>
+                                )}
+                                
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  {result.status && (
+                                    <Badge className={cn('text-xs', getStatusColor(result.status))}>
+                                      {result.status.replace('_', ' ')}
+                                    </Badge>
+                                  )}
+                                  
+                                  {result.priority && (
+                                    <Badge className={cn('text-xs', getPriorityColor(result.priority))}>
+                                      {result.priority}
+                                    </Badge>
+                                  )}
+                                  
+                                  {result.assignedTo && (
+                                    <div className="flex items-center space-x-1">
+                                      <User className="w-3 h-3" />
+                                      <span>{result.assignedTo}</span>
+                                    </div>
+                                  )}
+                                  
+                                  {result.projectName && (
+                                    <div className="flex items-center space-x-1">
+                                      <FolderKanban className="w-3 h-3" />
+                                      <span>{result.projectName}</span>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="flex items-center space-x-1">
+                                    <Calendar className="w-3 h-3" />
+                                    <span>{formatDate(result.createdAt)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // Lista simples para filtro específico
+                <div>
+                  {results.map((result, index) => (
+                    <div
+                      key={result.id}
+                      id={`search-result-${index}`}
+                      className={cn(
+                        'p-4 cursor-pointer transition-colors border-b last:border-b-0',
+                        index === selectedIndex ? 'bg-blue-50' : 'hover:bg-gray-50'
                       )}
-                      
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        {result.status && (
-                          <Badge className={cn('text-xs', getStatusColor(result.status))}>
-                            {result.status.replace('_', ' ')}
-                          </Badge>
-                        )}
-                        
-                        {result.priority && (
-                          <Badge className={cn('text-xs', getPriorityColor(result.priority))}>
-                            {result.priority}
-                          </Badge>
-                        )}
-                        
-                        {result.assignedTo && (
-                          <div className="flex items-center space-x-1">
-                            <User className="w-3 h-3" />
-                            <span>{result.assignedTo}</span>
+                      onClick={() => handleSelect(result)}
+                      role="option"
+                      aria-selected={index === selectedIndex}
+                      tabIndex={-1}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className={cn('p-2 rounded-lg', getTypeColor(result.type))}>
+                          {getTypeIcon(result.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-medium text-gray-900">
+                              {highlightText(result.title, debouncedQuery)}
+                            </h3>
+                            <Badge variant="secondary" className="text-xs">
+                              {result.type === 'project' ? 'Projeto' : 
+                               result.type === 'task' ? 'Tarefa' : 'Chamado'}
+                            </Badge>
                           </div>
-                        )}
-                        
-                        {result.projectName && (
-                          <div className="flex items-center space-x-1">
-                            <FolderKanban className="w-3 h-3" />
-                            <span>{result.projectName}</span>
+                          
+                          {result.description && (
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                              {highlightText(result.description, debouncedQuery)}
+                            </p>
+                          )}
+                          
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            {result.status && (
+                              <Badge className={cn('text-xs', getStatusColor(result.status))}>
+                                {result.status.replace('_', ' ')}
+                              </Badge>
+                            )}
+                            
+                            {result.priority && (
+                              <Badge className={cn('text-xs', getPriorityColor(result.priority))}>
+                                {result.priority}
+                              </Badge>
+                            )}
+                            
+                            {result.assignedTo && (
+                              <div className="flex items-center space-x-1">
+                                <User className="w-3 h-3" />
+                                <span>{result.assignedTo}</span>
+                              </div>
+                            )}
+                            
+                            {result.projectName && (
+                              <div className="flex items-center space-x-1">
+                                <FolderKanban className="w-3 h-3" />
+                                <span>{result.projectName}</span>
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="w-3 h-3" />
+                              <span>{formatDate(result.createdAt)}</span>
+                            </div>
                           </div>
-                        )}
-                        
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{formatDate(result.createdAt)}</span>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
+              
+              {/* Indicador de mais resultados */}
+              {searchResponse?.hasMore && (
+                <div className="p-4 text-center text-sm text-gray-500 border-t">
+                  E mais {searchResponse.totalCount - results.length} resultados...
+                </div>
+              )}
             </div>
           )}
         </CardContent>

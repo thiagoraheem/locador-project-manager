@@ -1163,6 +1163,164 @@ export class SqlServerStorage implements IStorage {
     };
   }
 
+  // Busca global
+  async globalSearch(
+    query: string, 
+    type: 'all' | 'projects' | 'tickets' | 'tasks' = 'all',
+    limit: number = 20,
+    offset: number = 0
+  ) {
+    const request = getDb().request();
+    const searchTerm = `%${query}%`;
+    request.input('searchTerm', sql.NVarChar, searchTerm);
+    request.input('limit', sql.Int, limit);
+    request.input('offset', sql.Int, offset);
+    
+    const results: any[] = [];
+    let totalCount = 0;
+    
+    if (type === 'all' || type === 'projects') {
+      const projectQuery = `
+        SELECT 
+          'project' as type,
+          id,
+          name as title,
+          description,
+          status,
+          NULL as priority,
+          NULL as assignedTo,
+          NULL as projectName,
+          created_at as createdAt,
+          (
+            CASE 
+              WHEN name LIKE @searchTerm THEN 3
+              WHEN description LIKE @searchTerm THEN 2
+              ELSE 1
+            END
+          ) as relevance
+        FROM projects 
+        WHERE name LIKE @searchTerm OR description LIKE @searchTerm
+        ORDER BY relevance DESC, created_at DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      `;
+      
+      const projectResults = await request.query(projectQuery);
+      results.push(...projectResults.recordset);
+      
+      // Contar total de projetos
+      const projectCountQuery = `
+        SELECT COUNT(*) as count FROM projects 
+        WHERE name LIKE @searchTerm OR description LIKE @searchTerm
+      `;
+      const projectCount = await request.query(projectCountQuery);
+      totalCount += projectCount.recordset[0].count;
+    }
+    
+    if (type === 'all' || type === 'tasks') {
+      const taskQuery = `
+        SELECT 
+          'task' as type,
+          t.id,
+          t.title,
+          t.description,
+          t.status,
+          t.priority,
+          u.name as assignedTo,
+          p.name as projectName,
+          t.created_at as createdAt,
+          (
+            CASE 
+              WHEN t.title LIKE @searchTerm THEN 3
+              WHEN t.description LIKE @searchTerm THEN 2
+              ELSE 1
+            END
+          ) as relevance
+        FROM tasks t
+        LEFT JOIN users u ON t.assigned_to = u.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        WHERE t.title LIKE @searchTerm OR t.description LIKE @searchTerm
+        ORDER BY relevance DESC, t.created_at DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      `;
+      
+      const taskResults = await request.query(taskQuery);
+      results.push(...taskResults.recordset);
+      
+      // Contar total de tarefas
+      const taskCountQuery = `
+        SELECT COUNT(*) as count FROM tasks 
+        WHERE title LIKE @searchTerm OR description LIKE @searchTerm
+      `;
+      const taskCount = await request.query(taskCountQuery);
+      totalCount += taskCount.recordset[0].count;
+    }
+    
+    if (type === 'all' || type === 'tickets') {
+      const ticketQuery = `
+        SELECT 
+          'ticket' as type,
+          tk.id,
+          tk.title,
+          tk.description,
+          tk.status,
+          tk.priority,
+          u.name as assignedTo,
+          p.name as projectName,
+          tk.created_at as createdAt,
+          (
+            CASE 
+              WHEN tk.title LIKE @searchTerm THEN 3
+              WHEN tk.description LIKE @searchTerm THEN 2
+              ELSE 1
+            END
+          ) as relevance
+        FROM tickets tk
+        LEFT JOIN users u ON tk.assigned_to = u.id
+        LEFT JOIN projects p ON tk.project_id = p.id
+        WHERE tk.title LIKE @searchTerm OR tk.description LIKE @searchTerm
+        ORDER BY relevance DESC, tk.created_at DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      `;
+      
+      const ticketResults = await request.query(ticketQuery);
+      results.push(...ticketResults.recordset);
+      
+      // Contar total de tickets
+      const ticketCountQuery = `
+        SELECT COUNT(*) as count FROM tickets 
+        WHERE title LIKE @searchTerm OR description LIKE @searchTerm
+      `;
+      const ticketCount = await request.query(ticketCountQuery);
+      totalCount += ticketCount.recordset[0].count;
+    }
+    
+    // Ordenar todos os resultados por relevância e data
+    const sortedResults = results
+      .sort((a, b) => {
+        if (a.relevance !== b.relevance) {
+          return b.relevance - a.relevance;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      })
+      .map(item => ({
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        description: item.description,
+        status: item.status,
+        priority: item.priority,
+        assignedTo: item.assignedTo,
+        projectName: item.projectName,
+        createdAt: item.createdAt?.toISOString() || item.createdAt
+      }));
+    
+    return {
+      results: sortedResults,
+      totalCount,
+      hasMore: offset + limit < totalCount
+    };
+  }
+
   // Utilitário para verificação de dependência circular
   async checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean> {
     const request = getDb().request();

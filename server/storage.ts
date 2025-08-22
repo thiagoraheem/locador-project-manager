@@ -253,6 +253,28 @@ export interface IStorage {
     }[];
   }>;
   
+  // Busca global
+  globalSearch(
+    query: string,
+    type?: 'all' | 'projects' | 'tickets' | 'tasks',
+    limit?: number,
+    offset?: number
+  ): Promise<{
+    results: {
+      id: string;
+      type: 'project' | 'task' | 'ticket';
+      title: string;
+      description?: string;
+      status?: string;
+      priority?: string;
+      assignedTo?: string;
+      projectName?: string;
+      createdAt: string;
+    }[];
+    totalCount: number;
+    hasMore: boolean;
+  }>;
+  
   // Utilitário para verificação de dependência circular
   checkCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean>;
 }

@@ -935,6 +935,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
 
+  // Endpoint de Busca Global
+  app.get("/api/search", async (req, res) => {
+    try {
+      const { q, type = 'all', limit = '20', offset = '0' } = req.query;
+      
+      if (!q || typeof q !== 'string' || q.trim().length < 2) {
+        return res.json({ 
+          results: [], 
+          totalCount: 0, 
+          hasMore: false 
+        });
+      }
+      
+      const searchType = ['all', 'projects', 'tickets', 'tasks'].includes(type as string) 
+        ? (type as 'all' | 'projects' | 'tickets' | 'tasks') 
+        : 'all';
+      
+      const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10) || 20));
+      const offsetNum = Math.max(0, parseInt(offset as string, 10) || 0);
+      
+      const searchResults = await storage.globalSearch(
+        q.trim(),
+        searchType,
+        limitNum,
+        offsetNum
+      );
+      
+      res.json(searchResults);
+    } catch (error) {
+      console.error('Error in /api/search:', error);
+      res.status(500).json({ 
+        message: "Failed to perform search",
+        results: [],
+        totalCount: 0,
+        hasMore: false
+      });
+    }
+  });
+
   // Endpoints de Relatórios
   app.get("/api/reports/productivity", async (req, res) => {
     try {
