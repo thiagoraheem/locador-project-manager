@@ -312,33 +312,49 @@ Use os utilitários de acessibilidade já criados em lib/accessibility.ts.
 ## 🎯 **PRÓXIMOS PASSOS RECOMENDADOS**
 
 ### ✅ **CONCLUÍDO RECENTEMENTE:**
-1. ✅ **Sistema de Login Completo** (item 1.1) - NOVO ✨
-2. ✅ **Sistema de Permissões por Perfil** (item 1.2) - NOVO ✨
-3. ✅ **Gestão de Usuários Funcional** (item 1.3) - NOVO ✨
-4. ✅ **Página de Detalhes do Projeto** (item 2.1)
-5. ✅ **Modal de Edição de Projetos** (item 2.2)
-6. ✅ **Sistema de Comentários** (item 3.2)
-7. ✅ **Página de Detalhes do Ticket** (item 3.1)
-8. ✅ **Sistema de Dependências** (item 4.2)
-9. ✅ **Notificações Funcionais** (item 6.1)
-10. ✅ **Dashboard com Dados Reais** (conectado ao SQL Server)
+1. ✅ **Sistema de Login Completo** (item 1.1) - FUNCIONAL ✨
+2. ✅ **Sistema de Permissões por Perfil** (item 1.2) - FUNCIONAL ✨
+3. ✅ **Gestão de Usuários Funcional** (item 1.3) - FUNCIONAL ✨
+4. ✅ **CRUD Completo** - Projetos, tickets e tarefas funcionando
+5. ✅ **Dashboard com Dados Reais** (conectado ao SQL Server)
+6. ✅ **Sistema de Comentários Funcional**
+7. ✅ **Sistema de Dependências de Tarefas**
+8. ✅ **Notificações Funcionais** (estrutura completa)
 
-### 🔴 **NOVA PRIORIDADE CRÍTICA** - Funcionalidades Core
+### 🚨 **PRIORIDADE CRÍTICA** - Correções de Estabilidade
 
-### Esta Semana (Alta Prioridade):
-1. **📊 Correção de Erros SQL nos Relatórios** (ambiguous columns detectados)
-2. **📋 Kanban Funcional com Drag & Drop** (item 4.3)
-3. **🔍 Busca Global Funcional** (item 7.1)
+### HOJE (Máxima Prioridade):
+1. **🔧 Corrigir Warning do PrivateRoute** (Cannot update component while rendering)
+   - Refatorar lógica de autenticação para evitar re-renders
+   - Resolver warnings críticos do React
+   - **Tempo:** 1-2 horas
 
-### Próxima Semana (Alta Prioridade):
-1. **Correção de Erros SQL nos Relatórios** (ambiguous columns)
-2. **Kanban Funcional com Drag & Drop** (item 4.3)
-3. **Busca Global Funcional** (item 7.1)
+2. **♿ Corrigir Acessibilidade dos Modais** (Missing DialogTitle/Description)
+   - Adicionar títulos e descrições adequadas nos modais
+   - Melhorar compatibilidade com screen readers  
+   - **Tempo:** 2-3 horas
+
+3. **⚡ Otimizar Polling de Notificações** (muito frequente)
+   - Reduzir frequência de requisições (de 250ms para 30s)
+   - Implementar WebSocket ou intervalo mais eficiente
+   - **Tempo:** 1-2 horas
+
+### ESTA SEMANA (Alta Prioridade):
+1. **📋 Kanban Funcional com Drag & Drop** (funcionalidade core pendente)
+2. **🔍 Busca Global Funcional** (experiência do usuário)
+3. **📊 Correção de Erros SQL nos Relatórios** (dados inconsistentes)
+
+### AGORA (Crítico - 4-6 horas):
+1. **🔧 Corrigir Warning PrivateRoute** (estabilidade React)
+2. **♿ Corrigir Acessibilidade Modais** (compliance)  
+3. **⚡ Otimizar Notificações** (performance)
 
 ### Backlog Importante:
-1. **Export PDF/Excel Funcional** (item 8.1)
-2. **Widgets Configuráveis** (item 9.1)
-3. **Melhorias de Acessibilidade** (item 10.1)
+1. **📋 Kanban Drag & Drop** (funcionalidade core)
+2. **🔍 Busca Global** (UX crítica)
+3. **📊 Correção SQL Relatórios** (dados corretos)
+4. **📄 Export PDF/Excel** (relatórios funcionais)
+5. **📈 Widgets Configuráveis** (dashboard avançado)
 
 ---
 
@@ -401,11 +417,37 @@ Use os utilitários de acessibilidade já criados em lib/accessibility.ts.
 
 ### ⚠️ **Novos Problemas Técnicos Identificados:**
 
+#### Problemas React/Rendering:
+1. **Warning: Cannot update component while rendering** (PrivateRoute)
+   - Problema no `PrivateRoute` causando re-renders desnecessários
+   - Afetar performance e causar warnings no console
+   - Necessário refatorar lógica de autenticação
+
+#### Problemas de Acessibilidade Críticos:
+2. **Missing DialogTitle/Description warnings** 
+   - Múltiplos modais sem títulos adequados para screen readers
+   - Componentes de modal precisam ser refatorados
+   - Impactar acessibilidade do sistema
+
+#### Performance Issues:
+3. **Polling excessivo de notificações**
+   - Requisições a cada 247-249ms são muito frequentes
+   - GET /api/notifications executando continuamente
+   - Desperdiçar recursos e impactar performance
+
+#### Status de Funcionalidades Core:
+- ✅ Sistema de autenticação FUNCIONAL (login/logout/permissões)
+- ✅ CRUD completo de projetos, tickets e tarefas
+- ✅ Dashboard com dados reais do SQL Server
+- ✅ Sistema de comentários funcional
+- ⚠️ Warnings de React precisam ser corrigidos
+- ⚠️ Acessibilidade precisa ser melhorada
+
 ---
 
-**Última Atualização:** 08/01/2025  
+**Última Atualização:** 09/01/2025  
 **Responsável:** Equipe de Desenvolvimento  
-**Versão:** 1.2 - Sistema de Controle de Acesso IMPLEMENTADO ✅
+**Versão:** 1.3 - Avaliação Técnica Atual ⚠️
 
 ---
 
