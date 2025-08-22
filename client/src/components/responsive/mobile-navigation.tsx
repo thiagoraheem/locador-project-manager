@@ -136,7 +136,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
                         <FolderKanban className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h2 className="font-semibold text-gray-900">Locador PM</h2>
+                        <h2 className="font-semibold text-gray-900">ProjectFlow</h2>
                         <p className="text-xs text-gray-500">Gerenciador de Projetos</p>
                       </div>
                     </div>
@@ -223,7 +223,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
           </Sheet>
           
           <div>
-            <h1 className="font-semibold text-gray-900 text-lg">Locador PM</h1>
+            <h1 className="font-semibold text-gray-900 text-lg">ProjectFlow</h1>
           </div>
         </div>
 
