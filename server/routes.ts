@@ -28,8 +28,11 @@ import {
 //   canUserPerformAction
 // } from "./permissions";
 import { registerUserRoutes } from "./routes/users";
+import { registerAuthRoutes } from "./routes/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register auth routes (deve vir antes das outras)
+  registerAuthRoutes(app);
   // Dashboard stats
   app.get("/api/dashboard/stats", async (req, res) => {
     try {

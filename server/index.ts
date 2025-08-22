@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { createServer } from "http";
@@ -39,8 +41,31 @@ app.use((req, res, next) => {
   next();
 });
 
+// CORS headers para autenticação
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  next();
+});
+
+// Parse JSON e form data
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Parse cookies
+app.use(cookieParser());
+
+// Configurar sessões (opcional, para compatibilidade)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback-session-secret-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  }
+}));
 
 (async () => {
   // Register API routes
