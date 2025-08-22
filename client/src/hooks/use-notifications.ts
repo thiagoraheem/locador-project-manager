@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Notification } from '@shared/schema';
 
 interface UseNotificationsReturn {
@@ -17,8 +17,15 @@ export function useNotifications(): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const lastFetchTime = useRef<number>(0);
 
-  const fetchNotifications = async (userId: string) => {
+  const fetchNotifications = useCallback(async (userId: string) => {
+    // Debounce: Only fetch if it's been at least 5 seconds since last fetch
+    const now = Date.now();
+    if (now - lastFetchTime.current < 5000) {
+      return;
+    }
+    lastFetchTime.current = now;
     setLoading(true);
     setError(null);
     try {
@@ -33,7 +40,7 @@ export function useNotifications(): UseNotificationsReturn {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const markAsRead = async (id: string) => {
     try {

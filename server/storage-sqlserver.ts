@@ -951,7 +951,7 @@ export class SqlServerStorage implements IStorage {
     let whereClause = 'WHERE 1=1';
     if (userId) {
       request.input('userId', sql.NVarChar, userId);
-      whereClause += ' AND (tasks.assigned_to = @userId OR tickets.assigned_to = @userId)';
+      whereClause += ' AND (tasks.assignee_id = @userId OR tickets.assignee_id = @userId)';
     }
     if (projectId) {
       request.input('projectId', sql.NVarChar, projectId);
@@ -992,8 +992,8 @@ export class SqlServerStorage implements IStorage {
         COUNT(DISTINCT CASE WHEN t.status = 'completed' THEN t.id END) as tasksCompleted,
         COUNT(DISTINCT CASE WHEN tk.status = 'resolved' THEN tk.id END) as ticketsResolved
       FROM users u
-      LEFT JOIN tasks t ON u.id = t.assigned_to AND t.created_at BETWEEN @startDate AND @endDate
-      LEFT JOIN tickets tk ON u.id = tk.assigned_to AND tk.created_at BETWEEN @startDate AND @endDate
+      LEFT JOIN tasks t ON u.id = t.assignee_id AND t.created_at BETWEEN @startDate AND @endDate
+      LEFT JOIN tickets tk ON u.id = tk.assignee_id AND tk.created_at BETWEEN @startDate AND @endDate
       GROUP BY u.id, u.name
       HAVING COUNT(DISTINCT t.id) > 0 OR COUNT(DISTINCT tk.id) > 0
       ORDER BY u.name
@@ -1117,7 +1117,7 @@ export class SqlServerStorage implements IStorage {
     let whereClause = 'WHERE created_at BETWEEN @startDate AND @endDate';
     if (userId) {
       request.input('userId', sql.NVarChar, userId);
-      whereClause += ' AND assigned_to = @userId';
+      whereClause += ' AND assignee_id = @userId';
     }
     if (projectId) {
       request.input('projectId', sql.NVarChar, projectId);
@@ -1157,7 +1157,7 @@ export class SqlServerStorage implements IStorage {
         u.name as memberName,
         COUNT(t.id) * 8 as hours
       FROM users u
-      LEFT JOIN tasks t ON u.id = t.assigned_to ${whereClause.replace('WHERE', 'AND')}
+      LEFT JOIN tasks t ON u.id = t.assignee_id ${whereClause.replace('WHERE', 'AND')}
       GROUP BY u.id, u.name
       HAVING COUNT(t.id) > 0
       ORDER BY hours DESC

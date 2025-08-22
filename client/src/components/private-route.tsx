@@ -60,7 +60,7 @@ export function PrivateRoute({
       'admin': 3
     };
 
-    const userLevel = roleHierarchy[user.role];
+    const userLevel = roleHierarchy[user.role as keyof typeof roleHierarchy];
     const requiredLevel = roleHierarchy[requireRole];
 
     if (userLevel < requiredLevel) {
