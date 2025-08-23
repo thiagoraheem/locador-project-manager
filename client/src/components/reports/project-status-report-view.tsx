@@ -15,8 +15,8 @@ export function ProjectStatusReportView({ data }: ProjectStatusReportViewProps) 
   // Dados para gráfico de pizza de status
   const statusChartData = data.projectsByStatus.map(status => ({
     name: getStatusDisplayName(status.status),
-    value: status.count,
-    percentage: status.percentage,
+    value: status.count || 0,
+    percentage: Number.isFinite(status.percentage) ? status.percentage : 0,
     color: getStatusColor(status.status)
   }));
 
@@ -122,7 +122,7 @@ export function ProjectStatusReportView({ data }: ProjectStatusReportViewProps) 
                   </Pie>
                   <Tooltip 
                     formatter={(value, name, props) => [
-                      `${value} projetos (${props.payload.percentage.toFixed(1)}%)`, 
+                      `${value} projetos (${Number.isFinite(props.payload.percentage) ? props.payload.percentage.toFixed(1) : 0}%)`, 
                       'Quantidade'
                     ]} 
                   />
@@ -137,7 +137,7 @@ export function ProjectStatusReportView({ data }: ProjectStatusReportViewProps) 
                     style={{ backgroundColor: entry.color }}
                   />
                   <span className="text-sm text-gray-600">
-                    {entry.name}: {entry.value} ({entry.percentage.toFixed(1)}%)
+                    {entry.name}: {entry.value} ({Number.isFinite(entry.percentage) ? entry.percentage.toFixed(1) : 0}%)
                   </span>
                 </div>
               ))}
@@ -203,9 +203,9 @@ export function ProjectStatusReportView({ data }: ProjectStatusReportViewProps) 
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Percentual:</span>
-                      <span className="font-medium">{status.percentage.toFixed(1)}%</span>
+                      <span className="font-medium">{Number.isFinite(status.percentage) ? status.percentage.toFixed(1) : 0}%</span>
                     </div>
-                    <Progress value={status.percentage} className="h-2 mt-2" />
+                    <Progress value={Number.isFinite(status.percentage) ? status.percentage : 0} className="h-2 mt-2" />
                   </div>
                 </div>
               );
